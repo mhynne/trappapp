@@ -1,0 +1,98 @@
+import { and, asc, desc, gt, lte, sql } from "drizzle-orm";
+
+import { db } from "@/lib/db";
+import { activityPeriods, type ActivityPeriod } from "@/lib/db/schema";
+
+export type PeriodRules = {
+  pointsUp: number;
+  pointsDown: number;
+  dailyPointsCap: number;
+};
+
+/** Perioden som pågår nå. Ved overlapp velges den som slutter først. */
+export async function getActivePeriod(): Promise<ActivityPeriod | null> {
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(activityPeriods)
+    .where(
+      and(lte(activityPeriods.startsAt, now), gt(activityPeriods.endsAt, now)),
+    )
+    .orderBy(asc(activityPeriods.endsAt))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+export async function getAllPeriods(): Promise<ActivityPeriod[]> {
+  return db.select().from(activityPeriods).orderBy(desc(activityPeriods.startsAt));
+}
+
+export async function getPeriodById(id: number): Promise<ActivityPeriod | null> {
+  const rows = await db
+    .select()
+    .from(activityPeriods)
+    .where(sql`${activityPeriods.id} = ${id}`)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export function rulesFor(period: ActivityPeriod): PeriodRules {
+  return {
+    pointsUp: Number(period.pointsUp),
+    pointsDown: Number(period.pointsDown),
+    dailyPointsCap: Number(period.dailyPointsCap),
+  };
+}
+
+export type LeaderboardRow = {
+  participantId: string;
+  nickname: string;
+  points: number;
+  floorsUp: number;
+  floorsDown: number;
+  trips: number;
+};
+
+/**
+ * Stillingen i en periode. Én spørring – på pilotskala (noen hundre
+ * registreringer per dag) er dette raskt nok uten materialiserte views.
+ */
+export async function getLeaderboard(periodId: number): Promise<LeaderboardRow[]> {
+  const rows = await db.execute<{
+    participant_id: string;
+    nickname: string;
+    points: string;
+    floors_up: string;
+    floors_down: string;
+    trips: string;
+  }>(sql`
+    select
+      p.id            as participant_id,
+      p.nickname      as nickname,
+      sum(t.points)   as points,
+      sum(t.floors_up)   as floors_up,
+      sum(t.floors_down) as floors_down,
+      count(*)        as trips
+    from trips t
+    join participants p on p.id = t.participant_id
+    where t.period_id = ${periodId}
+      and t.deleted_at is null
+      and p.is_banned = false
+    group by p.id, p.nickname
+    having sum(t.points) > 0
+    order by sum(t.points) desc, sum(t.floors_up) desc, min(t.created_at) asc
+  `);
+
+  return rows.map((row) => ({
+    participantId: row.participant_id,
+    nickname: row.nickname,
+    points: Number(row.points),
+    floorsUp: Number(row.floors_up),
+    floorsDown: Number(row.floors_down),
+    trips: Number(row.trips),
+  }));
+}
+
+// Formattering ligger i @/lib/format slik at klientkomponenter kan bruke den
+// uten å dra med seg databasetilkoblingen.
