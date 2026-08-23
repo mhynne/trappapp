@@ -37,6 +37,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Generert oppsettsfil for Supabase. Inneholder QR-tokens, som er det
+# eneste som hindrer registrering uten å ha vært i trappa.
+supabase-oppsett.sql
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
