@@ -23,8 +23,9 @@ export default async function PrivacyPage() {
 
         <Section title="Hva vi lagrer">
           <ul className="list-disc space-y-1 pl-5">
-            <li>Jobbadressen din. Den brukes til å logge deg inn, og til å
-              kjenne deg igjen når du bytter mellom mobil og PC.</li>
+            <li>E-postadressen du logger inn med. Den brukes bare til å kjenne
+              deg igjen når du bytter mellom mobil og PC. Du velger selv om du
+              bruker jobbadressen eller en privat adresse.</li>
             <li>Kallenavnet du selv velger.</li>
             <li>
               Hver trappetur du registrerer: fra og til hvilken etasje, tidspunkt
@@ -40,7 +41,7 @@ export default async function PrivacyPage() {
         <Section title="Hva vi ikke lagrer">
           <p>
             Ingen passord, telefonnummer eller posisjon. Vi henter ingenting fra
-            jobbkontoen din utover adressen du selv skriver inn, og vi sender
+            jobbkontoen din, og vi sender
             ikke opplysninger videre til andre enn e-posttjenesten som leverer
             innloggingskoden.
           </p>

@@ -17,9 +17,12 @@ export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }
 
-/** Domenet ansatte må ha. Tom verdi slår av begrensningen. */
+/**
+ * Valgfri begrensning til ett domene. Står som standard åpen, slik at ansatte
+ * kan bruke en privat adresse hvis de ikke vil ha konkurransen på jobbkontoen.
+ */
 function allowedDomain(): string {
-  return (process.env.ALLOWED_EMAIL_DOMAIN ?? "boitano.no").trim().toLowerCase();
+  return (process.env.ALLOWED_EMAIL_DOMAIN ?? "").trim().toLowerCase();
 }
 
 export type EmailCheck = { ok: true; email: string } | { ok: false; message: string };
@@ -33,7 +36,7 @@ export function validateEmail(raw: string): EmailCheck {
 
   const domain = allowedDomain();
   if (domain && !email.endsWith(`@${domain}`)) {
-    return { ok: false, message: `Bruk jobbadressen din på @${domain}.` };
+    return { ok: false, message: `Adressen må være på @${domain}.` };
   }
 
   return { ok: true, email };

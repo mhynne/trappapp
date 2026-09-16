@@ -85,11 +85,11 @@ export function LoginCard({
       {step === "epost" && (
         <form onSubmit={sendCode} className="space-y-3">
           <label htmlFor="epost" className="block font-semibold">
-            Logg inn med jobbadressen
+            Logg inn med e-post
           </label>
           <p className="text-sm text-muted">
             {intro ??
-              "Du får en engangskode på e-post. Da følger poengene deg mellom mobil og PC."}
+              "Du får en engangskode. Jobbadresse eller privat adresse – du velger selv. Poengene følger deg mellom mobil og PC."}
           </p>
           <input
             id="epost"
@@ -98,7 +98,7 @@ export function LoginCard({
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="fornavn.etternavn@boitano.no"
+            placeholder="deg@eksempel.no"
             className={INPUT}
           />
           <Feil melding={error} />

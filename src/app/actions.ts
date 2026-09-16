@@ -30,7 +30,7 @@ export type ActionResult = { ok: true } | { ok: false; message: string };
 
 /* ----------------------------------------------------------- innlogging */
 
-/** Steg 1: sender en engangskode til jobbadressen. */
+/** Steg 1: sender en engangskode til adressen brukeren oppgir. */
 export async function requestLoginCode(rawEmail: string): Promise<ActionResult> {
   const check = validateEmail(rawEmail);
   if (!check.ok) return check;

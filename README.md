@@ -4,8 +4,9 @@ Webapp som premierer ansatte for å ta trappa i stedet for heisen. Man skanner e
 QR-plakat i etasjen man kommer fram til, trykker på etasjen man gikk fra, og
 samler poeng. Resultatlisten viser hvem som har gått mest i en aktivitetsperiode.
 
-Bygget for **én bedrift i ett bygg**. Ansatte logger inn med jobbadressen og en
-engangskode på e-post, og velger et kallenavn som er det eneste kollegene ser.
+Bygget for **én bedrift i ett bygg**. Ansatte logger inn med e-post og en
+engangskode – jobbadresse eller privat, de velger selv – og et kallenavn som er
+det eneste kollegene ser.
 
 ## Teknologi
 
@@ -88,8 +89,8 @@ sensoravlesning eller IP-sperrer: dette er kolleger, ikke motstandere.
 
 ### Personvern
 
-Vi lagrer jobbadressen, kallenavnet, turene og krypterte innloggingskoder. Ingen
-passord, posisjon eller annet fra jobbkontoen. E-postadressen vises aldri på
+Vi lagrer e-postadressen, kallenavnet, turene og krypterte innloggingskoder. Ingen
+passord, posisjon eller noe fra jobbkontoen. E-postadressen vises aldri på
 resultatlisten – bare kallenavnet. Brukeren kan slette alt selv fra `/meg` eller
 `/personvern`. Se `/personvern` for teksten som vises til ansatte.
 
@@ -114,7 +115,7 @@ personvernvurderingen før lansering.
    | `NEXT_PUBLIC_APP_URL` | Den offentlige adressen, f.eks. `https://trappapp.bedrift.no` |
    | `RESEND_API_KEY` | Nøkkel fra resend.com. Mangler den, sendes ingen e-post |
    | `EMAIL_FROM` | Avsender. Krever verifisert domene for å nå andre enn deg selv |
-   | `ALLOWED_EMAIL_DOMAIN` | Domenet ansatte må ha, f.eks. `boitano.no` |
+   | `ALLOWED_EMAIL_DOMAIN` | Valgfri: låser registrering til ett domene. Tom = alle adresser |
 
    `NEXT_PUBLIC_APP_URL` er viktig: den bestemmer hva QR-kodene peker på.
    Plakatsiden advarer hvis adressen er `localhost`.
