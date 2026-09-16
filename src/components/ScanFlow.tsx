@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import { chooseNickname, registerTripAction } from "@/app/actions";
+import { registerTripAction } from "@/app/actions";
+import { LoginCard } from "@/components/LoginCard";
 import { StairsMark } from "@/components/StairsMark";
 import { formatPoints, plural } from "@/lib/format";
 import type { RegisterFailure, RegisterSuccess } from "@/lib/trips";
@@ -25,7 +26,7 @@ export function ScanFlow(props: Props) {
 
   if (!nickname) {
     return (
-      <NicknameStep
+      <LoginStep
         scannedFloor={props.scannedFloor}
         onDone={(name) => setNickname(name)}
       />
@@ -50,68 +51,27 @@ export function ScanFlow(props: Props) {
   );
 }
 
-/* ---------------------------------------------------------------- kallenavn */
+/* --------------------------------------------------------------- innlogging */
 
-function NicknameStep({
+function LoginStep({
   scannedFloor,
   onDone,
 }: {
   scannedFloor: FloorOption;
   onDone: (nickname: string) => void;
 }) {
-  const [value, setValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setError(null);
-    startTransition(async () => {
-      const result = await chooseNickname(value);
-      if (result.ok) {
-        onDone(result.nickname);
-      } else {
-        setError(result.message);
-      }
-    });
-  }
-
   return (
     <div className="space-y-6">
       <Header
         eyebrow="Velkommen til TrappApp"
-        title="Velg et kallenavn"
-        subtitle={`Du står i ${scannedFloor.label}. Kallenavnet er det andre ser på resultatlisten – du trenger ikke bruke ditt eget navn.`}
+        title="Logg inn"
+        subtitle={`Du står i ${scannedFloor.label}. Første gang må du logge inn – etterpå husker appen deg på denne enheten.`}
       />
 
-      <form onSubmit={submit} className="space-y-4">
-        <input
-          autoFocus
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="F.eks. Trappetroll"
-          maxLength={20}
-          enterKeyHint="done"
-          aria-label="Kallenavn"
-          className="w-full rounded-2xl border border-line bg-surface px-4 py-4 text-lg outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-        />
-        {error && (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            {error}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={pending || value.trim().length < 2}
-          className="w-full rounded-2xl bg-brand-600 px-4 py-4 text-lg font-semibold text-white transition-opacity disabled:opacity-40"
-        >
-          {pending ? "Lagrer …" : "Kom i gang"}
-        </button>
-      </form>
+      <LoginCard onDone={onDone} />
 
       <p className="text-xs text-muted">
-        Vi lagrer bare kallenavnet og turene du registrerer – ingen e-post eller
-        pålogging.{" "}
+        Vi lagrer e-postadressen din, kallenavnet og turene du registrerer.{" "}
         <Link href="/personvern" className="underline underline-offset-2">
           Slik behandler vi opplysningene
         </Link>

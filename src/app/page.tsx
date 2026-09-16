@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AppShell } from "@/components/AppShell";
-import { NicknameCard } from "@/components/NicknameCard";
+import { LoginCard } from "@/components/LoginCard";
 import { StairsMark } from "@/components/StairsMark";
 import { daysLeft, formatDateRange, formatPoints } from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
@@ -37,7 +37,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {!participant && <NicknameCard />}
+        {!participant && <LoginCard />}
 
         {period ? (
           <section className="rounded-2xl border border-line bg-surface p-6">

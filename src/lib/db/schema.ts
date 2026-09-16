@@ -8,22 +8,35 @@ import {
   serial,
   text,
   timestamp,
-  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const participants = pgTable(
-  "participants",
+export const participants = pgTable("participants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  /** Identiteten. Alltid normalisert til små bokstaver før lagring. */
+  email: text("email").notNull(),
+  nickname: text("nickname").notNull(),
+  isBanned: boolean("is_banned").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Engangskoder for innlogging. Koden lagres bare som hash. */
+export const loginCodes = pgTable(
+  "login_codes",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    deviceToken: uuid("device_token").notNull().unique(),
-    nickname: text("nickname").notNull(),
-    isBanned: boolean("is_banned").notNull().default(false),
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [uniqueIndex("participants_device_token_key").on(t.deviceToken)],
+  (t) => [index("login_codes_email_created_idx").on(t.email, t.createdAt)],
 );
 
 export const floors = pgTable("floors", {
@@ -85,6 +98,7 @@ export const trips = pgTable(
 );
 
 export type Participant = typeof participants.$inferSelect;
+export type LoginCode = typeof loginCodes.$inferSelect;
 export type Floor = typeof floors.$inferSelect;
 export type ActivityPeriod = typeof activityPeriods.$inferSelect;
 export type Trip = typeof trips.$inferSelect;

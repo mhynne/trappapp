@@ -85,6 +85,7 @@ export default async function ModerationPage({
             participants={participants.map((participant) => ({
               id: participant.id,
               nickname: participant.nickname,
+              email: participant.email,
               isBanned: participant.isBanned,
               joined: formatDateTime(participant.createdAt),
               trips: participant.trips,

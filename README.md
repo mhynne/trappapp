@@ -4,8 +4,8 @@ Webapp som premierer ansatte for å ta trappa i stedet for heisen. Man skanner e
 QR-plakat i etasjen man kommer fram til, trykker på etasjen man gikk fra, og
 samler poeng. Resultatlisten viser hvem som har gått mest i en aktivitetsperiode.
 
-Bygget for **én bedrift i ett bygg**, uten pålogging: identiteten er et
-selvvalgt kallenavn knyttet til en tilfeldig ID i nettleseren.
+Bygget for **én bedrift i ett bygg**. Ansatte logger inn med jobbadressen og en
+engangskode på e-post, og velger et kallenavn som er det eneste kollegene ser.
 
 ## Teknologi
 
@@ -51,12 +51,14 @@ QR-plakat i 4. etasje  →  /t/<token>  →  velg startetasje  →  poeng + plas
 ```
 
 - `src/app/t/[qrToken]/page.tsx` – skanne-siden, den viktigste skjermen. Nye
-  brukere velger kallenavn her; QR-skanningen *er* onboardingen.
+  brukere logger inn her; QR-skanningen *er* onboardingen.
 - `src/lib/trips.ts` – all registreringslogikk: poengberegning, nedkjøling,
   fartssjekk, kontinuitetsflagg og dagstak.
 - `src/lib/periods.ts` – aktiv periode og resultatlisten (én SQL-spørring).
-- `src/middleware.ts` – gir hver enhet en tilfeldig anonym ID i en
-  httpOnly-informasjonskapsel.
+- `src/lib/login-codes.ts` – engangskoder: utløp, forsøksgrense og rate-limiting.
+- `src/lib/session.ts` – signert sesjonskapsel. Ingen sesjonstabell i databasen.
+- `src/lib/email.ts` – utsending via Resend. Uten API-nøkkel skrives koden til
+  serverkonsollen, slik at flyten kan kjøres lokalt uten konto hos noen.
 - `src/app/admin/` – passordbeskyttet administrasjon.
 
 ### Poeng
@@ -86,12 +88,14 @@ sensoravlesning eller IP-sperrer: dette er kolleger, ikke motstandere.
 
 ### Personvern
 
-Vi lagrer kallenavn, en tilfeldig enhets-ID og turene. Ingen navn, e-post,
-posisjon eller kobling til jobbkonto. Brukeren kan slette alt selv fra
-`/meg` eller `/personvern`. Se `/personvern` for teksten som vises til ansatte.
+Vi lagrer jobbadressen, kallenavnet, turene og krypterte innloggingskoder. Ingen
+passord, posisjon eller annet fra jobbkontoen. E-postadressen vises aldri på
+resultatlisten – bare kallenavnet. Brukeren kan slette alt selv fra `/meg` eller
+`/personvern`. Se `/personvern` for teksten som vises til ansatte.
 
-Merk at et kallenavn kan være indirekte identifiserende på en liten
-arbeidsplass. Det bør stå i personvernvurderingen før lansering.
+E-postadressen gjør deltakerne direkte identifiserbare, og kallenavnet kan være
+indirekte identifiserende på en liten arbeidsplass. Begge deler bør stå i
+personvernvurderingen før lansering.
 
 ## Sette i drift
 
@@ -108,6 +112,9 @@ arbeidsplass. Det bør stå i personvernvurderingen før lansering.
    | `ADMIN_PASSWORD` | Langt, tilfeldig passord til `/admin` |
    | `ADMIN_SECRET` | `openssl rand -hex 32` |
    | `NEXT_PUBLIC_APP_URL` | Den offentlige adressen, f.eks. `https://trappapp.bedrift.no` |
+   | `RESEND_API_KEY` | Nøkkel fra resend.com. Mangler den, sendes ingen e-post |
+   | `EMAIL_FROM` | Avsender. Krever verifisert domene for å nå andre enn deg selv |
+   | `ALLOWED_EMAIL_DOMAIN` | Domenet ansatte må ha, f.eks. `boitano.no` |
 
    `NEXT_PUBLIC_APP_URL` er viktig: den bestemmer hva QR-kodene peker på.
    Plakatsiden advarer hvis adressen er `localhost`.
@@ -120,8 +127,13 @@ Supabase, så er den offentlige anon-nøkkelen verdiløs selv om den lekker.
 
 ## Kjent begrensning
 
-Identiteten ligger i nettleseren. Bytter noen telefon eller nettleser, starter de
-på nytt – appen kan ikke koble de to sammen uten pålogging. For en pilot er det
-et bevisst valg: null friksjon og minimalt med persondata. Trenger dere at folk
-beholder poengene på tvers av enheter, må det inn ekte innlogging (f.eks.
-Microsoft-konto), og da bør personvernvurderingen tas opp igjen.
+Avsenderadressen. Uten et verifisert domene hos Resend når e-posten bare
+kontoeierens egen adresse – alle andre får en 403 fra Resend, og koden kommer
+aldri fram. Det holder til testing, men før ansatte slippes inn må dere verifisere
+et domene dere kontrollerer og sette `EMAIL_FROM` til en adresse på det.
+Domenet trenger ikke være bedriftens: et eget domene til appen holder, og da
+slipper dere å involvere IT i DNS-oppsettet.
+
+Første innlogging krever dessuten e-post og kode mens man står i trappa. Sesjonen
+varer et år, så det skjer én gang per enhet, men be gjerne folk logge inn ved
+pulten før første trappetur.

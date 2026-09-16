@@ -63,7 +63,10 @@ async function main() {
 
   const [participant] = await db
     .insert(participants)
-    .values({ deviceToken: randomUUID(), nickname: `test-${randomUUID().slice(0, 8)}` })
+    .values({
+      email: `test-${randomUUID().slice(0, 8)}@example.test`,
+      nickname: `test-${randomUUID().slice(0, 8)}`,
+    })
     .returning();
 
   try {

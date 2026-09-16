@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 
-import { DeviceMirror } from "@/components/DeviceMirror";
 import { ServiceWorker } from "@/components/ServiceWorker";
-import { getDeviceToken } from "@/lib/identity";
 
 import "./globals.css";
 
@@ -30,16 +28,13 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const deviceToken = await getDeviceToken();
-
   return (
     <html lang="nb">
       <body className={`${geistSans.variable} font-sans antialiased`}>
         {children}
-        <DeviceMirror deviceToken={deviceToken} />
         <ServiceWorker />
       </body>
     </html>

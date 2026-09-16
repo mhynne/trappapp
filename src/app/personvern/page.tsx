@@ -23,31 +23,35 @@ export default async function PrivacyPage() {
 
         <Section title="Hva vi lagrer">
           <ul className="list-disc space-y-1 pl-5">
+            <li>Jobbadressen din. Den brukes til å logge deg inn, og til å
+              kjenne deg igjen når du bytter mellom mobil og PC.</li>
             <li>Kallenavnet du selv velger.</li>
-            <li>
-              En tilfeldig ID som ligger i nettleseren din, slik at appen kjenner
-              deg igjen. Den sier ingenting om hvem du er.
-            </li>
             <li>
               Hver trappetur du registrerer: fra og til hvilken etasje, tidspunkt
               og poeng.
+            </li>
+            <li>
+              Innloggingskoder, som bare lagres kryptert og slettes når de er
+              brukt eller utløpt.
             </li>
           </ul>
         </Section>
 
         <Section title="Hva vi ikke lagrer">
           <p>
-            Ingen navn, e-postadresse, telefonnummer eller pålogging. Vi henter
-            ikke posisjon, og vi kobler ikke bruken din til jobbkontoen din.
+            Ingen passord, telefonnummer eller posisjon. Vi henter ingenting fra
+            jobbkontoen din utover adressen du selv skriver inn, og vi sender
+            ikke opplysninger videre til andre enn e-posttjenesten som leverer
+            innloggingskoden.
           </p>
         </Section>
 
         <Section title="Hvem ser hva">
           <p>
             Kallenavnet, poengsummen og antall etasjer vises på resultatlisten
-            for alle som bruker appen. De som administrerer TrappApp ser i
-            tillegg de enkelte turene, slik at åpenbare feilregistreringer kan
-            fjernes.
+            for alle som bruker appen. E-postadressen din vises aldri der. De
+            som administrerer TrappApp ser i tillegg adressen og de enkelte
+            turene, slik at åpenbare feilregistreringer kan fjernes.
           </p>
           <p className="mt-2">
             Husk at et kallenavn kan avsløre hvem du er på en liten arbeidsplass,
@@ -68,7 +72,8 @@ export default async function PrivacyPage() {
             <div className="space-y-3">
               <p>
                 Du er registrert som{" "}
-                <strong className="font-semibold">{participant.nickname}</strong>.
+                <strong className="font-semibold">{participant.nickname}</strong>{" "}
+                ({participant.email}).
               </p>
               <DeleteMyData />
             </div>

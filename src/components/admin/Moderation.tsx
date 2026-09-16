@@ -27,6 +27,7 @@ export type TripItem = {
 export type ParticipantItem = {
   id: string;
   nickname: string;
+  email: string;
   isBanned: boolean;
   joined: string;
   trips: number;
@@ -181,6 +182,9 @@ export function ParticipantModeration({
                         utestengt
                       </span>
                     )}
+                  </p>
+                  <p className="truncate text-sm text-muted">
+                    {participant.email}
                   </p>
                   <p className="text-sm text-muted">
                     {formatPoints(participant.points)} poeng ·{" "}

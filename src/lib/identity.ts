@@ -1,28 +1,34 @@
 import { eq, sql } from "drizzle-orm";
-import { cookies } from "next/headers";
 
 import { db } from "@/lib/db";
 import { participants, type Participant } from "@/lib/db/schema";
-import { DEVICE_COOKIE } from "@/middleware";
+import { getSessionParticipantId } from "@/lib/session";
 
 export const NICKNAME_MIN = 2;
 export const NICKNAME_MAX = 20;
 
-/** Enhets-IDen fra informasjonskapselen (settes av middleware). */
-export async function getDeviceToken(): Promise<string | null> {
-  const store = await cookies();
-  return store.get(DEVICE_COOKIE)?.value ?? null;
-}
-
-/** Deltakeren som hører til denne enheten, eller null hvis kallenavn ikke er valgt. */
+/** Deltakeren som er logget inn på denne enheten, eller null. */
 export async function getCurrentParticipant(): Promise<Participant | null> {
-  const token = await getDeviceToken();
-  if (!token) return null;
+  const id = await getSessionParticipantId();
+  if (!id) return null;
 
   const rows = await db
     .select()
     .from(participants)
-    .where(eq(participants.deviceToken, token))
+    .where(eq(participants.id, id))
+    .limit(1);
+
+  return rows[0] ?? null;
+}
+
+/** Deltakeren som eier e-postadressen. Adressen må være normalisert. */
+export async function findParticipantByEmail(
+  email: string,
+): Promise<Participant | null> {
+  const rows = await db
+    .select()
+    .from(participants)
+    .where(sql`lower(${participants.email}) = ${email}`)
     .limit(1);
 
   return rows[0] ?? null;

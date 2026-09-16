@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { DeleteMyData } from "@/components/DeleteMyData";
-import { NicknameCard } from "@/components/NicknameCard";
+import { LoginCard } from "@/components/LoginCard";
+import { SignOutButton } from "@/components/SignOutButton";
 import { formatDateTime, formatPoints, plural } from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
 import { getActivePeriod } from "@/lib/periods";
@@ -17,9 +18,9 @@ export default async function MyPage() {
         <div className="space-y-5">
           <h1 className="text-2xl font-bold tracking-tight">Min side</h1>
           <p className="text-muted">
-            Velg et kallenavn for å komme i gang med å registrere trappeturer.
+            Logg inn for å registrere trappeturer og se poengene dine.
           </p>
-          <NicknameCard />
+          <LoginCard />
         </div>
       </AppShell>
     );
@@ -107,8 +108,14 @@ export default async function MyPage() {
           )}
         </section>
 
-        <div className="border-t border-line pt-5">
-          <DeleteMyData />
+        <div className="space-y-3 border-t border-line pt-5">
+          <p className="text-sm text-muted">
+            Innlogget som {participant.email}
+          </p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <SignOutButton />
+            <DeleteMyData />
+          </div>
         </div>
       </div>
     </AppShell>

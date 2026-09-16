@@ -72,6 +72,7 @@ export async function getTripsForModeration(
 export type AdminParticipantRow = {
   id: string;
   nickname: string;
+  email: string;
   isBanned: boolean;
   createdAt: Date;
   trips: number;
@@ -84,6 +85,7 @@ export async function getParticipantsForAdmin(): Promise<AdminParticipantRow[]> 
   const rows = await db.execute<{
     id: string;
     nickname: string;
+    email: string;
     is_banned: boolean;
     created_at: string;
     trips: string;
@@ -91,13 +93,13 @@ export async function getParticipantsForAdmin(): Promise<AdminParticipantRow[]> 
     flagged: string;
   }>(sql`
     select
-      p.id, p.nickname, p.is_banned, p.created_at,
+      p.id, p.nickname, p.email, p.is_banned, p.created_at,
       count(t.id) filter (where t.deleted_at is null) as trips,
       coalesce(sum(t.points) filter (where t.deleted_at is null), 0) as points,
       count(t.id) filter (where t.flagged and t.deleted_at is null) as flagged
     from participants p
     left join trips t on t.participant_id = p.id
-    group by p.id, p.nickname, p.is_banned, p.created_at
+    group by p.id, p.nickname, p.email, p.is_banned, p.created_at
     order by coalesce(sum(t.points) filter (where t.deleted_at is null), 0) desc,
              p.created_at asc
   `);
@@ -105,6 +107,7 @@ export async function getParticipantsForAdmin(): Promise<AdminParticipantRow[]> 
   return rows.map((row) => ({
     id: row.id,
     nickname: row.nickname,
+    email: row.email,
     isBanned: row.is_banned,
     createdAt: new Date(row.created_at),
     trips: Number(row.trips),
