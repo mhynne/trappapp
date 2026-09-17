@@ -1,0 +1,4 @@
+.next
+node_modules
+*.pdf
+supabase-oppsett.sql
