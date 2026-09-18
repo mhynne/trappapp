@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { daysLeft, formatDateRange, formatPoints, plural } from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
+import { getActiveLocations } from "@/lib/locations";
 import {
   getActivePeriodCached,
   getAllPeriodsCached,
@@ -15,18 +16,28 @@ export const dynamic = "force-dynamic";
 export default async function LeaderboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periode?: string }>;
+  searchParams: Promise<{ periode?: string; bygg?: string }>;
 }) {
-  const { periode } = await searchParams;
-  const [participant, periods, active] = await Promise.all([
+  const { periode, bygg } = await searchParams;
+  const [participant, periods, active, locations] = await Promise.all([
     getCurrentParticipant(),
     getAllPeriodsCached(),
     getActivePeriodCached(),
+    getActiveLocations(),
   ]);
 
   const selectedId = periode ? Number(periode) : (active?.id ?? periods[0]?.id);
   const period = periods.find((p) => p.id === selectedId) ?? null;
-  const rows = period ? await getLeaderboard(period.id) : [];
+
+  // Uten bygg-parameter vises hele bedriften.
+  const selectedLocation =
+    bygg && locations.some((l) => l.id === Number(bygg)) ? Number(bygg) : null;
+
+  const rows = period
+    ? await getLeaderboard(period.id, selectedLocation)
+    : [];
+
+  const periodQuery = period ? `periode=${period.id}&` : "";
 
   return (
     <AppShell active="resultater">
@@ -50,12 +61,42 @@ export default async function LeaderboardPage({
           </header>
         )}
 
+        {locations.length > 1 && (
+          <nav className="flex flex-wrap gap-2">
+            <Link
+              href={`/resultater?${periodQuery}`}
+              aria-current={selectedLocation === null ? "page" : undefined}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                selectedLocation === null
+                  ? "bg-brand-600 text-white"
+                  : "bg-surface-muted text-muted"
+              }`}
+            >
+              Hele bedriften
+            </Link>
+            {locations.map((l) => (
+              <Link
+                key={l.id}
+                href={`/resultater?${periodQuery}bygg=${l.id}`}
+                aria-current={l.id === selectedLocation ? "page" : undefined}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                  l.id === selectedLocation
+                    ? "bg-brand-600 text-white"
+                    : "bg-surface-muted text-muted"
+                }`}
+              >
+                {l.name}
+              </Link>
+            ))}
+          </nav>
+        )}
+
         {periods.length > 1 && (
           <nav className="flex flex-wrap gap-2">
             {periods.map((p) => (
               <Link
                 key={p.id}
-                href={`/resultater?periode=${p.id}`}
+                href={`/resultater?periode=${p.id}${selectedLocation ? `&bygg=${selectedLocation}` : ""}`}
                 aria-current={p.id === period?.id ? "page" : undefined}
                 className={`rounded-full px-3 py-1.5 text-sm font-medium ${
                   p.id === period?.id

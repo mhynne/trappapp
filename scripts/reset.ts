@@ -18,7 +18,7 @@ async function main() {
 
   const sql = postgres(connectionString, { prepare: false, max: 1 });
   try {
-    await sql`drop table if exists trips, activity_periods, floors, participants, _migrations cascade`;
+    await sql`drop table if exists trips, activity_periods, floors, locations, participants, login_codes, _migrations cascade`;
     console.log("Alle tabeller slettet. Kjør npm run db:migrate && npm run db:seed");
   } finally {
     await sql.end();

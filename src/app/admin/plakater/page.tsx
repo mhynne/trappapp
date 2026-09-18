@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { PrintButton } from "@/components/admin/PrintButton";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getAllFloors } from "@/lib/admin-data";
+import { getAllLocations } from "@/lib/locations";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,26 @@ async function baseUrl(): Promise<string> {
 export default async function PostersPage() {
   await requireAdmin();
 
-  const [floors, base] = await Promise.all([getAllFloors(), baseUrl()]);
-  const active = floors.filter((floor) => floor.isActive);
+  const [floors, locations, base] = await Promise.all([
+    getAllFloors(),
+    getAllLocations(),
+    baseUrl(),
+  ]);
+
+  const activeLocations = locations.filter((l) => l.isActive);
+  const byId = new Map(locations.map((l) => [l.id, l]));
+
+  // Bygg som er slått av skal ikke få plakater.
+  const active = floors
+    .filter((floor) => floor.isActive && byId.get(floor.locationId)?.isActive)
+    .sort((a, b) =>
+      (byId.get(a.locationId)?.name ?? "").localeCompare(
+        byId.get(b.locationId)?.name ?? "",
+      ) || b.number - a.number,
+    );
+
+  // Navnet trykkes bare når det finnes flere bygg å forveksle.
+  const showLocation = activeLocations.length > 1;
 
   const posters = await Promise.all(
     active.map(async (floor) => {
@@ -33,7 +52,14 @@ export default async function PostersPage() {
         margin: 1,
         errorCorrectionLevel: "M",
       });
-      return { floor, url, svg };
+      return {
+        floor,
+        url,
+        svg,
+        locationName: showLocation
+          ? (byId.get(floor.locationId)?.name ?? null)
+          : null,
+      };
     }),
   );
 
@@ -48,8 +74,8 @@ export default async function PostersPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">QR-plakater</h1>
             <p className="text-sm text-muted">
-              Én A4-side per aktiv etasje. Bruk «Skriv ut» og velg skriver eller
-              «Lagre som PDF».
+              Én A4-side per aktiv etasje, gruppert per bygg. Bruk «Skriv ut» og
+              velg skriver eller «Lagre som PDF».
             </p>
           </div>
           <div className="flex gap-2">
@@ -87,9 +113,11 @@ export default async function PostersPage() {
       </div>
 
       <div className="posters">
-        {posters.map(({ floor, url, svg }) => (
+        {posters.map(({ floor, url, svg, locationName }) => (
           <section key={floor.id} className="poster">
-            <p className="poster-eyebrow">Tok du trappa?</p>
+            <p className="poster-eyebrow">
+              {locationName ? `${locationName} · Tok du trappa?` : "Tok du trappa?"}
+            </p>
             <h2 className="poster-floor">{floor.label}</h2>
             <p className="poster-lead">
               Skann og registrer turen – det tar fem sekunder.

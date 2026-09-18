@@ -54,11 +54,26 @@ async function main() {
   const sql = postgres(connectionString, { prepare: false, max: 1 });
 
   try {
+    // Alle etasjer hører til et bygg. Uten lokasjon finnes ingen etasjer.
+    const [location] = await sql`
+      insert into locations (name)
+      select 'Hovedkontoret'
+      where not exists (select 1 from locations)
+      returning id, name
+    `;
+    if (location) {
+      console.log(`✓ Lokasjon "${location.name}" opprettet`);
+    }
+
+    const [{ id: locationId }] = await sql`
+      select id from locations order by id limit 1
+    `;
+
     for (const floor of FLOORS) {
       const inserted = await sql`
-        insert into floors (number, label, qr_token)
-        values (${floor.number}, ${floor.label}, ${generateQrToken()})
-        on conflict (number) do nothing
+        insert into floors (location_id, number, label, qr_token)
+        values (${locationId}, ${floor.number}, ${floor.label}, ${generateQrToken()})
+        on conflict (location_id, number) do nothing
         returning number, label, qr_token
       `;
       if (inserted.length > 0) {

@@ -10,8 +10,18 @@ import {
   setAdminCookie,
 } from "@/lib/admin-auth";
 import { db } from "@/lib/db";
-import { activityPeriods, floors, participants, trips } from "@/lib/db/schema";
+import {
+  activityPeriods,
+  floors,
+  locations,
+  participants,
+  trips,
+} from "@/lib/db/schema";
 import { validateNickname } from "@/lib/identity";
+import {
+  locationNameIsTaken,
+  validateLocationName,
+} from "@/lib/locations";
 import { PERIODS_TAG } from "@/lib/periods";
 import { osloDateStringToUtc } from "@/lib/timezone";
 import { generateQrToken } from "@/lib/tokens";
@@ -123,10 +133,53 @@ export async function deletePeriod(id: number): Promise<Result> {
   return { ok: true };
 }
 
+/* --------------------------------------------------------------- lokasjoner */
+
+export async function saveLocation(input: {
+  id?: number;
+  name: string;
+}): Promise<Result> {
+  await guard();
+
+  const check = validateLocationName(input.name);
+  if (!check.ok) return check;
+
+  if (await locationNameIsTaken(check.name, input.id)) {
+    return { ok: false, message: "Det finnes allerede en lokasjon med det navnet." };
+  }
+
+  if (input.id) {
+    await db
+      .update(locations)
+      .set({ name: check.name })
+      .where(eq(locations.id, input.id));
+  } else {
+    await db.insert(locations).values({ name: check.name });
+  }
+
+  refreshAdmin();
+  return { ok: true };
+}
+
+/**
+ * Slås en lokasjon av, slutter plakatene der å virke. Turene som alt er
+ * registrert blir stående – derfor ingen sletting her.
+ */
+export async function setLocationActive(
+  id: number,
+  isActive: boolean,
+): Promise<Result> {
+  await guard();
+  await db.update(locations).set({ isActive }).where(eq(locations.id, id));
+  refreshAdmin();
+  return { ok: true };
+}
+
 /* ----------------------------------------------------------------- etasjer */
 
 export async function saveFloor(input: {
   id?: number;
+  locationId: number;
   number: string;
   label: string;
 }): Promise<Result> {
@@ -149,12 +202,18 @@ export async function saveFloor(input: {
         .set({ number: level, label })
         .where(eq(floors.id, input.id));
     } else {
-      await db
-        .insert(floors)
-        .values({ number: level, label, qrToken: generateQrToken() });
+      await db.insert(floors).values({
+        locationId: input.locationId,
+        number: level,
+        label,
+        qrToken: generateQrToken(),
+      });
     }
   } catch {
-    return { ok: false, message: `Nivå ${level} finnes allerede.` };
+    return {
+      ok: false,
+      message: `Nivå ${level} finnes allerede i denne lokasjonen.`,
+    };
   }
 
   refreshAdmin();

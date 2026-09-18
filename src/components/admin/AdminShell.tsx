@@ -5,7 +5,7 @@ import { LogoutButton } from "@/components/admin/LogoutButton";
 const LINKS = [
   { href: "/admin", label: "Oversikt", key: "oversikt" },
   { href: "/admin/perioder", label: "Perioder", key: "perioder" },
-  { href: "/admin/etasjer", label: "Etasjer", key: "etasjer" },
+  { href: "/admin/etasjer", label: "Bygg og etasjer", key: "etasjer" },
   { href: "/admin/plakater", label: "Plakater", key: "plakater" },
   { href: "/admin/moderasjon", label: "Moderasjon", key: "moderasjon" },
 ] as const;

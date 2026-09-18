@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ScanFlow } from "@/components/ScanFlow";
 import { StairsMark } from "@/components/StairsMark";
 import { getCurrentParticipant } from "@/lib/identity";
+import { getActiveLocations } from "@/lib/locations";
 import { getActivePeriodCached } from "@/lib/periods";
 import {
   getActiveFloors,
@@ -26,11 +27,18 @@ export default async function ScanPage({
     return <UnknownCode />;
   }
 
-  const [participant, floors, period] = await Promise.all([
+  const [participant, floors, period, activeLocations] = await Promise.all([
     getCurrentParticipant(),
-    getActiveFloors(),
+    getActiveFloors(scannedFloor.locationId),
     getActivePeriodCached(),
+    getActiveLocations(),
   ]);
+
+  // Byggets navn vises bare når det finnes flere – med ett bygg er det støy.
+  const locationName =
+    activeLocations.length > 1
+      ? (activeLocations.find((l) => l.id === scannedFloor.locationId)?.name ?? null)
+      : null;
 
   const lastTrip = participant ? await getLastTrip(participant.id) : null;
 
@@ -47,6 +55,7 @@ export default async function ScanPage({
           nickname={participant?.nickname ?? null}
           suggestedFrom={suggestFromFloor(floors, scannedFloor, lastTrip)}
           hasActivePeriod={period !== null}
+          locationName={locationName}
         />
         <nav className="mt-10 flex justify-center gap-4 text-sm text-muted">
           <Link href="/resultater" className="underline underline-offset-2">

@@ -110,7 +110,7 @@ export type LeaderboardRow = {
  * en sidecache ville vist deg en annens uthevning.
  */
 const loadLeaderboard = unstable_cache(
-  async (periodId: number): Promise<LeaderboardRow[]> => {
+  async (periodId: number, locationId: number | null): Promise<LeaderboardRow[]> => {
   const rows = await db.execute<{
     participant_id: string;
     nickname: string;
@@ -131,6 +131,7 @@ const loadLeaderboard = unstable_cache(
     where t.period_id = ${periodId}
       and t.deleted_at is null
       and p.is_banned = false
+      ${locationId === null ? sql`` : sql`and t.location_id = ${locationId}`}
     group by p.id, p.nickname
     having sum(t.points) > 0
     order by sum(t.points) desc, sum(t.floors_up) desc, min(t.created_at) asc
@@ -149,8 +150,12 @@ const loadLeaderboard = unstable_cache(
   { revalidate: 30 },
 );
 
-export async function getLeaderboard(periodId: number): Promise<LeaderboardRow[]> {
-  return loadLeaderboard(periodId);
+/** Hele bedriften når locationId er null, ellers bare det bygget. */
+export async function getLeaderboard(
+  periodId: number,
+  locationId: number | null = null,
+): Promise<LeaderboardRow[]> {
+  return loadLeaderboard(periodId, locationId);
 }
 
 // Formattering ligger i @/lib/format slik at klientkomponenter kan bruke den

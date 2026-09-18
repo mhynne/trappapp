@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 
 import { db, sqlClient } from "../src/lib/db";
 import { participants } from "../src/lib/db/schema";
+import { getActiveLocations } from "../src/lib/locations";
 import { getActivePeriod, rulesFor } from "../src/lib/periods";
 import {
   getActiveFloors,
@@ -42,7 +43,10 @@ async function ageTrips(participantId: string, seconds: number) {
 }
 
 async function main() {
-  const floors = await getActiveFloors();
+  const [location] = await getActiveLocations();
+  if (!location) throw new Error("Ingen lokasjon. Kjør npm run db:seed.");
+
+  const floors = await getActiveFloors(location.id);
   const period = await getActivePeriod();
 
   if (!period) throw new Error("Ingen aktiv periode. Kjør npm run db:seed.");

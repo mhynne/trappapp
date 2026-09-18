@@ -156,11 +156,12 @@ export function suggestFromFloor(
   ).number;
 }
 
-export async function getActiveFloors(): Promise<Floor[]> {
+/** Aktive etasjer i ett bygg. Etasjer fra andre bygg hører ikke hjemme her. */
+export async function getActiveFloors(locationId: number): Promise<Floor[]> {
   return db
     .select()
     .from(floors)
-    .where(eq(floors.isActive, true))
+    .where(and(eq(floors.isActive, true), eq(floors.locationId, locationId)))
     .orderBy(desc(floors.number));
 }
 
@@ -214,7 +215,9 @@ export async function registerTrip(params: {
     };
   }
 
-  const knownFloors = await getActiveFloors();
+  // Startetasjen må ligge i samme bygg som den skannede plakaten. Uten dette
+  // kunne man oppgi en etasje fra et annet bygg og få poeng for differansen.
+  const knownFloors = await getActiveFloors(scannedFloor.locationId);
   if (!knownFloors.some((f) => f.number === fromFloor)) {
     return {
       ok: false,
@@ -282,6 +285,7 @@ export async function registerTrip(params: {
     participantId: participant.id,
     periodId: period?.id ?? null,
     scannedFloorId: scannedFloor.id,
+    locationId: scannedFloor.locationId,
     fromFloor,
     toFloor,
     floorsUp,

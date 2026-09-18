@@ -13,7 +13,13 @@ export type FloorItem = {
   isActive: boolean;
 };
 
-export function FloorManager({ floors }: { floors: FloorItem[] }) {
+export function FloorManager({
+  locationId,
+  floors,
+}: {
+  locationId: number;
+  floors: FloorItem[];
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -35,7 +41,7 @@ export function FloorManager({ floors }: { floors: FloorItem[] }) {
         onSubmit={(event) => {
           event.preventDefault();
           run(async () => {
-            const result = await saveFloor(newFloor);
+            const result = await saveFloor({ ...newFloor, locationId });
             if (result.ok) setNewFloor({ number: "", label: "" });
             return result;
           });
@@ -104,7 +110,11 @@ export function FloorManager({ floors }: { floors: FloorItem[] }) {
                 onCancel={() => setEditing(null)}
                 onSave={(values) =>
                   run(async () => {
-                    const result = await saveFloor({ id: floor.id, ...values });
+                    const result = await saveFloor({
+                      id: floor.id,
+                      locationId,
+                      ...values,
+                    });
                     if (result.ok) setEditing(null);
                     return result;
                   })

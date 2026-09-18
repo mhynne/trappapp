@@ -8,6 +8,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -39,16 +40,34 @@ export const loginCodes = pgTable(
   (t) => [index("login_codes_email_created_idx").on(t.email, t.createdAt)],
 );
 
-export const floors = pgTable("floors", {
+/** Et bygg. Hver lokasjon har sitt eget sett etasjer. */
+export const locations = pgTable("locations", {
   id: serial("id").primaryKey(),
-  number: integer("number").notNull().unique(),
-  label: text("label").notNull(),
-  qrToken: text("qr_token").notNull().unique(),
+  name: text("name").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
+
+export const floors = pgTable(
+  "floors",
+  {
+    id: serial("id").primaryKey(),
+    locationId: integer("location_id")
+      .notNull()
+      .references(() => locations.id, { onDelete: "cascade" }),
+    /** Unikt per lokasjon, ikke globalt – to bygg kan ha hver sin 3. etasje. */
+    number: integer("number").notNull(),
+    label: text("label").notNull(),
+    qrToken: text("qr_token").notNull().unique(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("floors_location_number_idx").on(t.locationId, t.number)],
+);
 
 export const activityPeriods = pgTable("activity_periods", {
   id: serial("id").primaryKey(),
@@ -82,6 +101,10 @@ export const trips = pgTable(
     scannedFloorId: integer("scanned_floor_id")
       .notNull()
       .references(() => floors.id),
+    /** Utledet av etasjen, men lagret direkte så resultatlisten slipper en kobling. */
+    locationId: integer("location_id").references(() => locations.id, {
+      onDelete: "set null",
+    }),
     fromFloor: integer("from_floor").notNull(),
     toFloor: integer("to_floor").notNull(),
     floorsUp: integer("floors_up").notNull(),
@@ -99,6 +122,7 @@ export const trips = pgTable(
 
 export type Participant = typeof participants.$inferSelect;
 export type LoginCode = typeof loginCodes.$inferSelect;
+export type Location = typeof locations.$inferSelect;
 export type Floor = typeof floors.$inferSelect;
 export type ActivityPeriod = typeof activityPeriods.$inferSelect;
 export type Trip = typeof trips.$inferSelect;

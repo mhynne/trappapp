@@ -18,6 +18,8 @@ type Props = {
   nickname: string | null;
   suggestedFrom: number | null;
   hasActivePeriod: boolean;
+  /** Byggets navn. Bare satt når det finnes flere lokasjoner. */
+  locationName?: string | null;
 };
 
 export function ScanFlow(props: Props) {
@@ -28,6 +30,7 @@ export function ScanFlow(props: Props) {
     return (
       <LoginStep
         scannedFloor={props.scannedFloor}
+        locationName={props.locationName}
         onDone={(name) => setNickname(name)}
       />
     );
@@ -55,9 +58,11 @@ export function ScanFlow(props: Props) {
 
 function LoginStep({
   scannedFloor,
+  locationName,
   onDone,
 }: {
   scannedFloor: FloorOption;
+  locationName?: string | null;
   onDone: (nickname: string) => void;
 }) {
   return (
@@ -65,7 +70,7 @@ function LoginStep({
       <Header
         eyebrow="Velkommen til TrappApp"
         title="Logg inn"
-        subtitle={`Du står i ${scannedFloor.label}. Første gang må du logge inn – etterpå husker appen deg på denne enheten.`}
+        subtitle={`Du står i ${scannedFloor.label}${locationName ? `, ${locationName}` : ""}. Første gang må du logge inn – etterpå husker appen deg på denne enheten.`}
       />
 
       <LoginCard onDone={onDone} />
