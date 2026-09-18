@@ -1,5 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { loginCodes } from "@/lib/db/schema";
@@ -68,6 +68,13 @@ export type CreateResult =
  * bare den nyeste virker. Returnerer koden – kalleren sender den.
  */
 export async function createLoginCode(email: string): Promise<CreateResult> {
+  // Rydder brukte og utløpte koder underveis, så tabellen ikke vokser i det
+  // uendelige og adresser ikke blir liggende lenger enn de trengs. Billigere
+  // enn en planlagt jobb, og holder seg selv ved like.
+  await db
+    .delete(loginCodes)
+    .where(lt(loginCodes.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)));
+
   const recent = await db
     .select({ count: sql<string>`count(*)` })
     .from(loginCodes)

@@ -1,4 +1,5 @@
 import { and, asc, desc, gt, lte, sql } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
 import { activityPeriods, type ActivityPeriod } from "@/lib/db/schema";
@@ -58,7 +59,15 @@ export type LeaderboardRow = {
  * Stillingen i en periode. Én spørring – på pilotskala (noen hundre
  * registreringer per dag) er dette raskt nok uten materialiserte views.
  */
-export async function getLeaderboard(periodId: number): Promise<LeaderboardRow[]> {
+/**
+ * Selve summeringen. Mellomlagres i 30 sekunder og deles av alle som ser på
+ * listen samtidig – uten det regnes den ut på nytt for hver eneste besøkende.
+ *
+ * Bare tallene mellomlagres, ikke siden: resultatsiden uthever din egen rad, og
+ * en sidecache ville vist deg en annens uthevning.
+ */
+const loadLeaderboard = unstable_cache(
+  async (periodId: number): Promise<LeaderboardRow[]> => {
   const rows = await db.execute<{
     participant_id: string;
     nickname: string;
@@ -84,14 +93,21 @@ export async function getLeaderboard(periodId: number): Promise<LeaderboardRow[]
     order by sum(t.points) desc, sum(t.floors_up) desc, min(t.created_at) asc
   `);
 
-  return rows.map((row) => ({
-    participantId: row.participant_id,
-    nickname: row.nickname,
-    points: Number(row.points),
-    floorsUp: Number(row.floors_up),
-    floorsDown: Number(row.floors_down),
-    trips: Number(row.trips),
-  }));
+    return rows.map((row) => ({
+      participantId: row.participant_id,
+      nickname: row.nickname,
+      points: Number(row.points),
+      floorsUp: Number(row.floors_up),
+      floorsDown: Number(row.floors_down),
+      trips: Number(row.trips),
+    }));
+  },
+  ["leaderboard"],
+  { revalidate: 30 },
+);
+
+export async function getLeaderboard(periodId: number): Promise<LeaderboardRow[]> {
+  return loadLeaderboard(periodId);
 }
 
 // Formattering ligger i @/lib/format slik at klientkomponenter kan bruke den
