@@ -3,6 +3,10 @@ import { ImageResponse } from "next/og";
 /**
  * App-ikonene tegnes som rektangler i stedet for tekst, slik at vi slipper å
  * laste inn en font for å generere dem.
+ *
+ * Stavene står inntil hverandre og har samme farge, slik at de leses som én
+ * sammenhengende trapp framfor et stolpediagram. Det tåler også 16 piksler i
+ * en nettleserfane, der strektegningen på forsiden ville blitt grøt.
  */
 export function renderIcon(size: number): ImageResponse {
   const unit = size / 16;
@@ -17,7 +21,7 @@ export function renderIcon(size: number): ImageResponse {
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "center",
-          gap: unit * 0.35,
+          gap: 0,
           background: "#059669",
           borderRadius: size * 0.18,
           paddingBottom: unit * 3,
@@ -27,11 +31,12 @@ export function renderIcon(size: number): ImageResponse {
           <div
             key={index}
             style={{
-              width: unit * 1.9,
-              height: unit * height * 0.72,
+              width: unit * 2,
+              height: unit * height * 0.78,
               background: "#ffffff",
-              borderRadius: unit * 0.25,
-              opacity: 0.55 + index * 0.11,
+              borderTopLeftRadius: unit * 0.3,
+              borderTopRightRadius:
+                index === steps.length - 1 ? unit * 0.3 : 0,
             }}
           />
         ))}
