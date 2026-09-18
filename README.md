@@ -4,9 +4,9 @@ Webapp som premierer ansatte for å ta trappa i stedet for heisen. Man skanner e
 QR-plakat i etasjen man kommer fram til, trykker på etasjen man gikk fra, og
 samler poeng. Resultatlisten viser hvem som har gått mest i en aktivitetsperiode.
 
-Bygget for **én bedrift i ett bygg**. Ansatte logger inn med e-post og en
-engangskode – jobbadresse eller privat, de velger selv – og et kallenavn som er
-det eneste kollegene ser.
+Bygget for **én bedrift, med ett eller flere bygg**. Ansatte logger inn med
+e-post og en engangskode – jobbadresse eller privat, de velger selv – og et
+kallenavn som er det eneste kollegene ser.
 
 ## Teknologi
 
@@ -49,6 +49,7 @@ Vil du se en fylt resultatliste: `npx tsx scripts/demo-data.ts` (kun localhost).
 
 ```
 QR-plakat i 4. etasje  →  /t/<token>  →  velg startetasje  →  poeng + plassering
+↑ hører til ett bygg                     ↑ bare etasjer fra samme bygg
 ```
 
 - `src/app/t/[qrToken]/page.tsx` – skanne-siden, den viktigste skjermen. Nye
@@ -56,6 +57,7 @@ QR-plakat i 4. etasje  →  /t/<token>  →  velg startetasje  →  poeng + plas
 - `src/lib/trips.ts` – all registreringslogikk: poengberegning, nedkjøling,
   fartssjekk, kontinuitetsflagg og dagstak.
 - `src/lib/periods.ts` – aktiv periode og resultatlisten (én SQL-spørring).
+- `src/lib/locations.ts` – byggene. Hvert bygg har sitt eget sett etasjer.
 - `src/lib/login-codes.ts` – engangskoder: utløp, forsøksgrense og rate-limiting.
 - `src/lib/session.ts` – signert sesjonskapsel. Ingen sesjonstabell i databasen.
 - `src/lib/email.ts` – utsending via Resend. Uten API-nøkkel skrives koden til
@@ -70,6 +72,29 @@ regnes om – hver tur lagrer sine egne poeng.
 
 Etasjer måles i *nivåer*: Kjeller = 0, 1. etasje = 1, og så videre. Navnet på
 plakaten settes fritt.
+
+### Lokasjoner
+
+Hvert bygg er en **lokasjon** med sitt eget sett etasjer, og etasjenummer er
+unikt *per lokasjon* – to bygg kan derfor ha hver sin 3. etasje. QR-tokenene er
+globalt unike, så en plakat peker alltid entydig på én etasje i ett bygg.
+
+Skanne-siden tilbyr bare etasjer fra bygget QR-koden hører til, og
+registreringen validerer startetasjen mot samme bygg. Uten det kunne man skanne
+i et lavt bygg, oppgi en startetasje fra et høyt, og få poeng for differansen.
+
+Hver tur lagrer lokasjonen direkte i `trips.location_id`. Den kunne vært utledet
+via etasjen, men en egen kolonne gjør resultatlisten enkel å filtrere – samme
+grep som `floors_up`.
+
+**Periodene er felles** på tvers av byggene, og deltakere er ikke bundet til ett
+bygg: den som er på besøk et annet sted registrerer turer der uten videre.
+Resultatsiden viser hele bedriften som standard, med en velger for enkeltbygg.
+Velgeren, byggets navn på skanne-siden og navnet på plakatene dukker først opp
+når det finnes mer enn ett bygg – med ett bygg er det bare støy.
+
+Bygg opprettes under `/admin` → *Bygg og etasjer*. Slås et bygg av, slutter
+plakatene der å virke, men registrerte turer blir stående.
 
 ### Hvordan juks bremses
 
@@ -103,8 +128,8 @@ personvernvurderingen før lansering.
 1. **Database:** opprett et Supabase-prosjekt. Kopier tilkoblingsstrengen under
    *Project Settings → Database → Connection string → Transaction pooler*.
 2. **Migrer:** kjør `DATABASE_URL=<strengen> npm run db:migrate` lokalt, eller
-   lim innholdet i `db/migrations/0001_init.sql` inn i Supabase SQL Editor.
-   Kjør `npm run db:seed` for å få inn etasjer og en første periode.
+   lim filene i `db/migrations/` inn i Supabase SQL Editor i rekkefølge. Kjør
+   `npm run db:seed` for å få inn ett bygg, etasjene og en første periode.
 3. **Vercel:** importer repoet og sett miljøvariablene:
 
    | Variabel | Verdi |
@@ -120,8 +145,12 @@ personvernvurderingen før lansering.
    `NEXT_PUBLIC_APP_URL` er viktig: den bestemmer hva QR-kodene peker på.
    Plakatsiden advarer hvis adressen er `localhost`.
 
-4. **Plakater:** logg inn på `/admin`, gå til *Plakater*, trykk «Skriv ut» og
-   velg skriver eller «Lagre som PDF». Én A4-side per aktiv etasje.
+4. **Bygg og etasjer:** logg inn på `/admin` → *Bygg og etasjer*. Seeden lager
+   ett bygg kalt «Hovedkontoret» – gi det et riktig navn, og legg til flere bygg
+   her om dere har det.
+5. **Plakater:** gå til *Plakater*, trykk «Skriv ut» og velg skriver eller «Lagre
+   som PDF». Én A4-side per aktiv etasje, gruppert per bygg. Har dere flere bygg,
+   trykkes navnet på arket.
 
 Databasen nås bare fra serversiden. Slå på row level security med «deny all» i
 Supabase, så er den offentlige anon-nøkkelen verdiløs selv om den lekker.
