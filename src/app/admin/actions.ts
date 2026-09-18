@@ -1,7 +1,7 @@
 "use server";
 
 import { eq, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import {
   clearAdminCookie,
@@ -12,6 +12,7 @@ import {
 import { db } from "@/lib/db";
 import { activityPeriods, floors, participants, trips } from "@/lib/db/schema";
 import { validateNickname } from "@/lib/identity";
+import { PERIODS_TAG } from "@/lib/periods";
 import { osloDateStringToUtc } from "@/lib/timezone";
 import { generateQrToken } from "@/lib/tokens";
 
@@ -27,6 +28,9 @@ function refreshAdmin() {
   revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath("/resultater");
+  // De offentlige sidene leser perioden fra cache. Uten dette ville en endring
+  // her tatt opptil et minutt før den ble synlig for de ansatte.
+  revalidateTag(PERIODS_TAG);
 }
 
 /* ------------------------------------------------------------- innlogging */

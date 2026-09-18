@@ -5,7 +5,7 @@ import { LoginCard } from "@/components/LoginCard";
 import { StairsMark } from "@/components/StairsMark";
 import { daysLeft, formatDateRange, formatPoints } from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
-import { getActivePeriod, rulesFor } from "@/lib/periods";
+import { getActivePeriodCached, rulesFor } from "@/lib/periods";
 import { getStanding } from "@/lib/trips";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const [participant, period] = await Promise.all([
     getCurrentParticipant(),
-    getActivePeriod(),
+    getActivePeriodCached(),
   ]);
 
   const standing =

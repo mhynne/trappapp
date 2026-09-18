@@ -4,8 +4,8 @@ import { AppShell } from "@/components/AppShell";
 import { daysLeft, formatDateRange, formatPoints, plural } from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
 import {
-  getActivePeriod,
-  getAllPeriods,
+  getActivePeriodCached,
+  getAllPeriodsCached,
   getLeaderboard,
   type LeaderboardRow,
 } from "@/lib/periods";
@@ -20,8 +20,8 @@ export default async function LeaderboardPage({
   const { periode } = await searchParams;
   const [participant, periods, active] = await Promise.all([
     getCurrentParticipant(),
-    getAllPeriods(),
-    getActivePeriod(),
+    getAllPeriodsCached(),
+    getActivePeriodCached(),
   ]);
 
   const selectedId = periode ? Number(periode) : (active?.id ?? periods[0]?.id);

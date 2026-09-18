@@ -4,7 +4,7 @@ import { LoginCard } from "@/components/LoginCard";
 import { SignOutButton } from "@/components/SignOutButton";
 import { formatDateTime, formatPoints, plural } from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
-import { getActivePeriod } from "@/lib/periods";
+import { getActivePeriodCached } from "@/lib/periods";
 import { getRecentTrips, getStanding } from "@/lib/trips";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export default async function MyPage() {
     );
   }
 
-  const period = await getActivePeriod();
+  const period = await getActivePeriodCached();
   const [standing, trips] = await Promise.all([
     period
       ? getStanding(participant.id, period.id)

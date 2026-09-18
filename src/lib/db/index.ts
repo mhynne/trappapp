@@ -22,11 +22,12 @@ const client =
   postgres(connectionString, {
     // Supabase sin transaksjons-pooler støtter ikke prepared statements.
     prepare: false,
-    // I produksjon kjører hver forespørsel i sin egen serverinstans, og den
-    // håndterer bare én om gangen. Flere tilkoblinger per instans blir derfor
-    // bare liggende ubrukt – og ganger opp tilkoblingsbehovet når mange
-    // skanner samtidig. Lokalt er en større pool nyttig ved omlasting.
-    max: process.env.NODE_ENV === "production" ? 1 : 5,
+    // Hver forespørsel kjører i sin egen serverinstans, så poolen trenger ikke
+    // være stor – en høy verdi ganger bare opp tilkoblingsbehovet mot Supabase
+    // når mange skanner samtidig. To gjør likevel at spørringene på samme side
+    // kan gå parallelt, i stedet for å stå i kø bak hverandre og holde på
+    // tilkoblingen lenger. Lokalt er en større pool nyttig ved omlasting.
+    max: process.env.NODE_ENV === "production" ? 2 : 5,
   });
 
 if (process.env.NODE_ENV !== "production") {

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ScanFlow } from "@/components/ScanFlow";
 import { StairsMark } from "@/components/StairsMark";
 import { getCurrentParticipant } from "@/lib/identity";
-import { getActivePeriod } from "@/lib/periods";
+import { getActivePeriodCached } from "@/lib/periods";
 import {
   getActiveFloors,
   getFloorByToken,
@@ -29,7 +29,7 @@ export default async function ScanPage({
   const [participant, floors, period] = await Promise.all([
     getCurrentParticipant(),
     getActiveFloors(),
-    getActivePeriod(),
+    getActivePeriodCached(),
   ]);
 
   const lastTrip = participant ? await getLastTrip(participant.id) : null;

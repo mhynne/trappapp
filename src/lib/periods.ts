@@ -29,6 +29,49 @@ export async function getAllPeriods(): Promise<ActivityPeriod[]> {
   return db.select().from(activityPeriods).orderBy(desc(activityPeriods.startsAt));
 }
 
+/**
+ * Mellomlagrede varianter for de offentlige sidene, som henter perioden på
+ * nesten hver visning selv om den endrer seg noen ganger i året.
+ *
+ * Brukes bevisst IKKE av registreringen i trips.ts: der avgjør perioden hvor
+ * mange poeng turen gir, og en 60 sekunder gammel periode kan ved et
+ * månedsskifte bokføre turen på feil periode. Admin bruker heller ikke disse,
+ * så den som redigerer ser endringen med en gang.
+ */
+export const PERIODS_TAG = "perioder";
+
+/**
+ * unstable_cache lagrer verdien som JSON, så Date-feltene kommer tilbake som
+ * tekst. Uten dette ville `period.endsAt.getTime()` kaste, og sidene feile.
+ */
+function revivePeriod(row: ActivityPeriod): ActivityPeriod {
+  return {
+    ...row,
+    startsAt: new Date(row.startsAt),
+    endsAt: new Date(row.endsAt),
+    createdAt: new Date(row.createdAt),
+  };
+}
+
+const loadActivePeriod = unstable_cache(getActivePeriod, ["aktiv-periode"], {
+  revalidate: 60,
+  tags: [PERIODS_TAG],
+});
+
+const loadAllPeriods = unstable_cache(getAllPeriods, ["alle-perioder"], {
+  revalidate: 60,
+  tags: [PERIODS_TAG],
+});
+
+export async function getActivePeriodCached(): Promise<ActivityPeriod | null> {
+  const row = await loadActivePeriod();
+  return row ? revivePeriod(row) : null;
+}
+
+export async function getAllPeriodsCached(): Promise<ActivityPeriod[]> {
+  return (await loadAllPeriods()).map(revivePeriod);
+}
+
 export async function getPeriodById(id: number): Promise<ActivityPeriod | null> {
   const rows = await db
     .select()
