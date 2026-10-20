@@ -20,9 +20,14 @@ async function baseUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-export default async function PostersPage() {
+export default async function PostersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ bygg?: string }>;
+}) {
   await requireAdmin();
 
+  const { bygg } = await searchParams;
   const [floors, locations, base] = await Promise.all([
     getAllFloors(),
     getAllLocations(),
@@ -32,9 +37,20 @@ export default async function PostersPage() {
   const activeLocations = locations.filter((l) => l.isActive);
   const byId = new Map(locations.map((l) => [l.id, l]));
 
+  // Uten parameter skrives alle bygg ut.
+  const selectedLocation =
+    bygg && activeLocations.some((l) => l.id === Number(bygg))
+      ? Number(bygg)
+      : null;
+
   // Bygg som er slått av skal ikke få plakater.
   const active = floors
-    .filter((floor) => floor.isActive && byId.get(floor.locationId)?.isActive)
+    .filter(
+      (floor) =>
+        floor.isActive &&
+        byId.get(floor.locationId)?.isActive &&
+        (selectedLocation === null || floor.locationId === selectedLocation),
+    )
     .sort((a, b) =>
       (byId.get(a.locationId)?.name ?? "").localeCompare(
         byId.get(b.locationId)?.name ?? "",
@@ -43,6 +59,14 @@ export default async function PostersPage() {
 
   // Navnet trykkes bare når det finnes flere bygg å forveksle.
   const showLocation = activeLocations.length > 1;
+
+  // Påmeldingsplakaten peker på forsiden, ikke på en etasje. Den er lik for
+  // alle bygg, så det trengs bare én.
+  const joinSvg = await QRCode.toString(base, {
+    type: "svg",
+    margin: 1,
+    errorCorrectionLevel: "M",
+  });
 
   const posters = await Promise.all(
     active.map(async (floor) => {
@@ -74,8 +98,10 @@ export default async function PostersPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">QR-plakater</h1>
             <p className="text-sm text-muted">
-              Én A4-side per aktiv etasje, gruppert per bygg. Bruk «Skriv ut» og
-              velg skriver eller «Lagre som PDF».
+              Første side er påmeldingsplakaten – heng den der folk samles.
+              Deretter én A4-side per aktiv etasje. Velg ett bygg for å skrive
+              ut bare det. Bruk «Skriv ut» og velg skriver eller «Lagre som
+              PDF».
             </p>
           </div>
           <div className="flex gap-2">
@@ -88,6 +114,36 @@ export default async function PostersPage() {
             <PrintButton />
           </div>
         </div>
+
+        {activeLocations.length > 1 && (
+          <nav className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/plakater"
+              aria-current={selectedLocation === null ? "page" : undefined}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                selectedLocation === null
+                  ? "bg-brand-600 text-white"
+                  : "bg-surface-muted text-muted"
+              }`}
+            >
+              Alle bygg
+            </Link>
+            {activeLocations.map((location) => (
+              <Link
+                key={location.id}
+                href={`/admin/plakater?bygg=${location.id}`}
+                aria-current={location.id === selectedLocation ? "page" : undefined}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                  location.id === selectedLocation
+                    ? "bg-brand-600 text-white"
+                    : "bg-surface-muted text-muted"
+                }`}
+              >
+                {location.name}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         {isLocal ? (
           <p className="rounded-2xl bg-amber-100 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -113,6 +169,28 @@ export default async function PostersPage() {
       </div>
 
       <div className="posters">
+        <section className="poster">
+          <p className="poster-eyebrow">Bli med</p>
+          <h2 className="poster-floor">Ta trappa</h2>
+          <p className="poster-lead">
+            Skann koden og logg inn. Det tar et halvt minutt, og du gjør det
+            bare én gang per enhet.
+          </p>
+          <div
+            className="poster-qr"
+            // QR-koden er generert på serveren av qrcode-pakken.
+            dangerouslySetInnerHTML={{ __html: joinSvg }}
+          />
+          <p className="poster-url">{base}</p>
+          <p className="poster-steps">
+            Deretter: gå trappa, skann plakaten i etasjen du kommer fram til, og
+            trykk på etasjen du gikk fra.
+          </p>
+          <p className="poster-foot">
+            Jobbadresse eller privat e-post – du velger selv
+          </p>
+        </section>
+
         {posters.map(({ floor, url, svg, locationName }) => (
           <section key={floor.id} className="poster">
             <p className="poster-eyebrow">
@@ -189,6 +267,13 @@ const PRINT_CSS = `
   color: #5d6b64;
   word-break: break-all;
   margin: 5mm 0 0;
+}
+
+.poster-steps {
+  font-size: 13pt;
+  color: #3f5249;
+  margin: 6mm 0 0;
+  max-width: 150mm;
 }
 
 .poster-foot {
