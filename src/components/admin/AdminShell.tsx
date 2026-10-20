@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/admin/etasjer", label: "Bygg og etasjer", key: "etasjer" },
   { href: "/admin/plakater", label: "Plakater", key: "plakater" },
   { href: "/admin/moderasjon", label: "Moderasjon", key: "moderasjon" },
+  { href: "/admin/support", label: "Support", key: "support" },
 ] as const;
 
 export function AdminShell({

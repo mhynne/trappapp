@@ -23,6 +23,7 @@ import {
   validateLocationName,
 } from "@/lib/locations";
 import { PERIODS_TAG } from "@/lib/periods";
+import { setReportHandled } from "@/lib/support";
 import { osloDateStringToUtc } from "@/lib/timezone";
 import { generateQrToken } from "@/lib/tokens";
 
@@ -304,6 +305,18 @@ export async function renameParticipant(
 export async function deleteParticipant(id: string): Promise<Result> {
   await guard();
   await db.delete(participants).where(eq(participants.id, id));
+  refreshAdmin();
+  return { ok: true };
+}
+
+/* ----------------------------------------------------------------- support */
+
+export async function markSupportHandled(
+  id: number,
+  handled: boolean,
+): Promise<Result> {
+  await guard();
+  await setReportHandled(id, handled);
   refreshAdmin();
   return { ok: true };
 }

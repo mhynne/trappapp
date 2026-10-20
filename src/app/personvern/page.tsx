@@ -35,6 +35,11 @@ export default async function PrivacyPage() {
               Innloggingskoder, som bare lagres kryptert og slettes når de er
               brukt eller utløpt.
             </li>
+            <li>
+              Melder du fra om et problem, lagrer vi meldingen sammen med hvilken
+              nettleser og side du var på, slik at vi kan finne feilen. Disse
+              slettes etter 90 dager.
+            </li>
           </ul>
         </Section>
 

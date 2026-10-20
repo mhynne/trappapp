@@ -17,6 +17,12 @@ export default function NotFound() {
       >
         Til forsiden
       </Link>
+      <Link
+        href="/support?fra=fant-ikke-siden"
+        className="text-sm text-muted underline underline-offset-2"
+      >
+        Si fra om problemet
+      </Link>
     </div>
   );
 }

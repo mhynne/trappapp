@@ -47,6 +47,10 @@ export function AppShell({
         <Link href="/personvern" className="underline underline-offset-2">
           Personvern
         </Link>
+        <span aria-hidden="true"> · </span>
+        <Link href="/support" className="underline underline-offset-2">
+          Si fra om et problem
+        </Link>
       </footer>
     </div>
   );

@@ -24,6 +24,12 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
         >
           Til forsiden
         </Link>
+        <Link
+          href="/support?fra=feilside"
+          className="text-sm text-muted underline underline-offset-2"
+        >
+          Si fra om problemet
+        </Link>
       </div>
     </div>
   );

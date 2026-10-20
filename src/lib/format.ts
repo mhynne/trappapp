@@ -34,3 +34,7 @@ export function formatDateTime(value: Date): string {
 export function daysLeft(endsAt: Date): number {
   return Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / 86_400_000));
 }
+
+/** Lengdegrense for supportmeldinger. Ligger her, ikke i @/lib/support, slik
+ * at skjemaet kan bruke den uten å dra med seg databasetilkoblingen. */
+export const SUPPORT_MESSAGE_MAX = 2000;

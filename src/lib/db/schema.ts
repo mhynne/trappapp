@@ -120,7 +120,31 @@ export const trips = pgTable(
   (t) => [index("trips_participant_created_idx").on(t.participantId, t.createdAt)],
 );
 
+/** Meldinger fra brukerne om problemer. Begge koblingene er valgfrie, fordi
+ * skjemaet skal virke også når man ikke får logget inn. */
+export const supportReports = pgTable(
+  "support_reports",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    message: text("message").notNull(),
+    contactEmail: text("contact_email"),
+    participantId: uuid("participant_id").references(() => participants.id, {
+      onDelete: "set null",
+    }),
+    fromPage: text("from_page"),
+    userAgent: text("user_agent"),
+    serviceWorker: boolean("service_worker"),
+    appVersion: text("app_version"),
+    handledAt: timestamp("handled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("support_reports_handled_created_idx").on(t.handledAt, t.createdAt)],
+);
+
 export type Participant = typeof participants.$inferSelect;
+export type SupportReport = typeof supportReports.$inferSelect;
 export type LoginCode = typeof loginCodes.$inferSelect;
 export type Location = typeof locations.$inferSelect;
 export type Floor = typeof floors.$inferSelect;

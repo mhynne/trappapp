@@ -70,3 +70,65 @@ export async function sendLoginCode(
     return { ok: false, message: "Klarte ikke å sende e-posten. Prøv igjen." };
   }
 }
+
+/** Adressen som varsles når noen melder om et problem. */
+function supportAddress(): string | null {
+  return process.env.SUPPORT_EMAIL?.trim() || null;
+}
+
+/**
+ * Varsler om en ny supportmelding. Rapporten er allerede lagret, så en feil
+ * her skal ikke stoppe brukeren – den logges og svelges.
+ */
+export async function sendSupportNotification(fields: {
+  message: string;
+  from: string;
+  fromPage: string | null;
+  userAgent: string | null;
+  serviceWorker: boolean | null;
+  appVersion: string | null;
+}): Promise<void> {
+  const to = supportAddress();
+  const apiKey = process.env.RESEND_API_KEY;
+
+  const body = [
+    fields.message,
+    "",
+    "—",
+    `Fra: ${fields.from}`,
+    `Side: ${fields.fromPage ?? "ukjent"}`,
+    `Nettleser: ${fields.userAgent ?? "ukjent"}`,
+    `Service worker: ${fields.serviceWorker === null ? "ukjent" : fields.serviceWorker ? "aktiv" : "ikke aktiv"}`,
+    `Appversjon: ${fields.appVersion ?? "ukjent"}`,
+  ].join("\n");
+
+  if (!to || !apiKey) {
+    console.warn(
+      `[TrappApp] ${!to ? "SUPPORT_EMAIL" : "RESEND_API_KEY"} mangler – varsler ikke.\n${body}`,
+    );
+    return;
+  }
+
+  try {
+    const response = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromAddress(),
+        to: [to],
+        subject: `TrappApp: melding fra ${fields.from}`,
+        text: body,
+      }),
+    });
+    if (!response.ok) {
+      console.error(
+        `[TrappApp] Varsel om supportmelding feilet: ${response.status}`,
+      );
+    }
+  } catch {
+    console.error("[TrappApp] Varsel om supportmelding kunne ikke sendes.");
+  }
+}

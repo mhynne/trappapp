@@ -2,10 +2,11 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 
 import { db } from "@/lib/db";
 import { participants } from "@/lib/db/schema";
-import { sendLoginCode } from "@/lib/email";
+import { sendLoginCode, sendSupportNotification } from "@/lib/email";
 import {
   findParticipantByEmail,
   getCurrentParticipant,
@@ -24,6 +25,7 @@ import {
   setPendingEmail,
   setSession,
 } from "@/lib/session";
+import { appVersion, createReport } from "@/lib/support";
 import { getFloorByToken, registerTrip, type RegisterResult } from "@/lib/trips";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
@@ -179,5 +181,56 @@ export async function deleteMyData(): Promise<{ ok: boolean }> {
   await clearPendingEmail();
 
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/* ------------------------------------------------------------- support */
+
+/**
+ * Tar imot en melding om et problem. Virker uten innlogging, siden den
+ * vanligste meldingen er at man ikke kommer inn.
+ */
+export async function submitSupportReport(input: {
+  message: string;
+  contactEmail: string;
+  fromPage: string;
+  serviceWorker: boolean | null;
+}): Promise<ActionResult> {
+  const participant = await getCurrentParticipant();
+
+  // Innlogget: vi kjenner adressen fra før og dobbeltlagrer den ikke, slik at
+  // "slett mine data" også fjerner den fra rapporten.
+  const contactEmail = participant
+    ? null
+    : (() => {
+        const check = validateEmail(input.contactEmail);
+        return check.ok ? check.email : null;
+      })();
+
+  const store = await headers();
+
+  const result = await createReport({
+    message: input.message,
+    contactEmail,
+    participantId: participant?.id ?? null,
+    fromPage: input.fromPage || null,
+    userAgent: store.get("user-agent"),
+    serviceWorker: input.serviceWorker,
+    appVersion: appVersion(),
+  });
+
+  if (!result.ok) return result;
+
+  await sendSupportNotification({
+    message: input.message.trim(),
+    from: participant
+      ? `${participant.nickname} (${participant.email})`
+      : (contactEmail ?? "ikke innlogget, ingen adresse oppgitt"),
+    fromPage: input.fromPage || null,
+    userAgent: store.get("user-agent"),
+    serviceWorker: input.serviceWorker,
+    appVersion: appVersion(),
+  });
+
   return { ok: true };
 }
