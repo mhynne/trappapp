@@ -62,6 +62,7 @@ QR-plakat i 4. etasje  →  /t/<token>  →  velg startetasje  →  poeng + plas
 - `src/lib/session.ts` – signert sesjonskapsel. Ingen sesjonstabell i databasen.
 - `src/lib/email.ts` – utsending via Resend. Uten API-nøkkel skrives koden til
   serverkonsollen, slik at flyten kan kjøres lokalt uten konto hos noen.
+- `src/lib/support.ts` – meldinger om problemer fra brukerne.
 - `src/app/admin/` – passordbeskyttet administrasjon.
 
 ### Poeng
@@ -112,12 +113,48 @@ Den reelle sikkerhetsventilen er `/admin/moderasjon`, der enkeltturer kan
 slettes og deltakere utestenges. Vi gjør bevisst *ikke* geolokasjon,
 sensoravlesning eller IP-sperrer: dette er kolleger, ikke motstandere.
 
+### Når ingen kampanje pågår
+
+Uten aktiv periode avviser `registerTrip` registreringen med koden `no_period`
+og lagrer ingenting. Tidligere ble turen lagret med null poeng, noe som bare
+var egnet til å forvirre – en tur som ga `+0` uten åpenbar grunn.
+
+Skanne-siden viser da «Kampanjen er over» allerede før innloggingssteget. Det
+er ingen grunn til å be noen logge inn når de uansett ikke kan registrere.
+Forsiden viser siste kampanje med datoer og en knapp til resultatene.
+
+Merk at forsiden leser perioden fra cache og kan henge inntil 60 sekunder ved
+et periodeskifte, mens skanne-siden bruker det eksakte oppslaget og snur
+umiddelbart. Se avsnittet om perioder i `src/lib/periods.ts`.
+
+### Support
+
+`/support` tar imot meldinger om problemer. Skjemaet **virker uten
+innlogging**, siden den vanligste meldingen er at man ikke kommer inn – ligger
+supporten bak innlogging, er den ubrukelig nøyaktig når den trengs.
+
+Konteksten fanges automatisk, og er som regel det som løser saken: nettleser,
+hvilken side man kom fra, om en service worker er aktiv, og hvilken versjon
+appen kjører. De to siste er med fordi begge har forklart ekte feil her.
+
+Rapporten lagres i databasen *og* varsles per e-post til `SUPPORT_EMAIL`.
+Lagring først gjør at ingenting går tapt om utsendingen feiler. Admin leser
+dem under *Support* og markerer dem håndtert; svar går per e-post fra din egen
+innboks. Inngangene ligger i bunnteksten og på feilsiden, «fant ikke siden» og
+offline-siden – der folk faktisk er når noe er galt.
+
+Rapportene slettes etter 90 dager. Er avsenderen innlogget, lagres ingen egen
+e-postadresse – koblingen til deltakeren holder, og den er `ON DELETE SET
+NULL`, så «slett mine data» fjerner adressen mens feilbeskrivelsen kan bli
+stående anonymt.
+
 ### Personvern
 
-Vi lagrer e-postadressen, kallenavnet, turene og krypterte innloggingskoder. Ingen
-passord, posisjon eller noe fra jobbkontoen. E-postadressen vises aldri på
-resultatlisten – bare kallenavnet. Brukeren kan slette alt selv fra `/meg` eller
-`/personvern`. Se `/personvern` for teksten som vises til ansatte.
+Vi lagrer e-postadressen, kallenavnet, turene, krypterte innloggingskoder og
+eventuelle supportmeldinger. Ingen passord, posisjon eller noe fra jobbkontoen.
+E-postadressen vises aldri på resultatlisten – bare kallenavnet. Brukeren kan
+slette alt selv fra `/meg` eller `/personvern`. Se `/personvern` for teksten som
+vises til ansatte.
 
 E-postadressen gjør deltakerne direkte identifiserbare, og kallenavnet kan være
 indirekte identifiserende på en liten arbeidsplass. Begge deler bør stå i
@@ -141,6 +178,7 @@ personvernvurderingen før lansering.
    | `RESEND_API_KEY` | Nøkkel fra resend.com. Mangler den, sendes ingen e-post |
    | `EMAIL_FROM` | Avsender. Krever verifisert domene for å nå andre enn deg selv |
    | `ALLOWED_EMAIL_DOMAIN` | Valgfri: låser registrering til ett domene. Tom = alle adresser |
+   | `SUPPORT_EMAIL` | Adressen som varsles ved meldinger på `/support` |
 
    `NEXT_PUBLIC_APP_URL` er viktig: den bestemmer hva QR-kodene peker på.
    Plakatsiden advarer hvis adressen er `localhost`.
