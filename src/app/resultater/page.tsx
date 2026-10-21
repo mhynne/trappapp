@@ -1,12 +1,25 @@
 import Link from "next/link";
 
 import { AppShell } from "@/components/AppShell";
-import { daysLeft, formatDateRange, formatPoints, plural } from "@/lib/format";
+import {
+  daysLeft,
+  etasjerPerDeltakerPerDag,
+  formatAntall,
+  formatDateRange,
+  formatHøyde,
+  formatPoints,
+  formatSnitt,
+  plural,
+} from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
+import type { ActivityPeriod } from "@/lib/db/schema";
 import { getActiveLocations } from "@/lib/locations";
 import {
   getActivePeriodCached,
   getAllPeriodsCached,
+  getPeriodTotals,
+  getTotalsByPeriod,
+  type PeriodTotals,
   getLeaderboard,
   type LeaderboardRow,
 } from "@/lib/periods";
@@ -26,6 +39,8 @@ export default async function LeaderboardPage({
     getActiveLocations(),
   ]);
 
+  const alleTotaler = await getTotalsByPeriod();
+
   const selectedId = periode ? Number(periode) : (active?.id ?? periods[0]?.id);
   const period = periods.find((p) => p.id === selectedId) ?? null;
 
@@ -33,9 +48,12 @@ export default async function LeaderboardPage({
   const selectedLocation =
     bygg && locations.some((l) => l.id === Number(bygg)) ? Number(bygg) : null;
 
-  const rows = period
-    ? await getLeaderboard(period.id, selectedLocation)
-    : [];
+  const [rows, totals] = period
+    ? await Promise.all([
+        getLeaderboard(period.id, selectedLocation),
+        getPeriodTotals(period.id, selectedLocation),
+      ])
+    : [[], null];
 
   const periodQuery = period ? `periode=${period.id}&` : "";
 
@@ -59,6 +77,44 @@ export default async function LeaderboardPage({
               Ingen konkurranseperiode er opprettet ennå.
             </p>
           </header>
+        )}
+
+        {period && totals && totals.floors > 0 && (
+          <section className="rounded-2xl border border-line bg-surface p-5">
+            <p className="text-sm text-muted">
+              {selectedLocation
+                ? locations.find((l) => l.id === selectedLocation)?.name
+                : "Hele bedriften"}{" "}
+              til sammen
+            </p>
+            <p className="mt-1 text-3xl font-bold tracking-tight">
+              {formatAntall(totals.floors)} etasjer
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Omtrent {formatHøyde(totals.floors)} rett opp, fordelt på{" "}
+              {formatAntall(totals.trips)}{" "}
+              {totals.trips === 1 ? "tur" : "turer"} fra{" "}
+              {formatAntall(totals.participants)}{" "}
+              {totals.participants === 1 ? "deltaker" : "deltakere"}.
+            </p>
+            {(() => {
+              const snitt = etasjerPerDeltakerPerDag(
+                totals.floors,
+                totals.participants,
+                period.startsAt,
+                period.endsAt,
+              );
+              return snitt === null ? null : (
+                <p className="mt-3 text-sm">
+                  <span className="font-medium">{formatSnitt(snitt)}</span>
+                  <span className="text-muted">
+                    {" "}
+                    etasjer per deltaker per dag
+                  </span>
+                </p>
+              );
+            })()}
+          </section>
         )}
 
         {locations.length > 1 && (
@@ -126,8 +182,81 @@ export default async function LeaderboardPage({
             ))}
           </ol>
         )}
+
+        <Utvikling
+          periods={periods}
+          totaler={alleTotaler}
+          valgtId={period?.id ?? null}
+        />
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * Kampanjene stilt opp mot hverandre. Snittet er det som kan sammenlignes –
+ * totalen rangerer etter varighet og deltakerantall, ikke etter innsats.
+ * Gjelder alltid hele bedriften, også når et enkeltbygg er valgt over.
+ */
+function Utvikling({
+  periods,
+  totaler,
+  valgtId,
+}: {
+  periods: ActivityPeriod[];
+  totaler: Record<number, PeriodTotals>;
+  valgtId: number | null;
+}) {
+  const medData = periods.filter((p) => (totaler[p.id]?.floors ?? 0) > 0);
+  if (medData.length < 2) return null;
+
+  return (
+    <section className="space-y-3 pt-2">
+      <div>
+        <h2 className="text-lg font-semibold">Utvikling</h2>
+        <p className="text-sm text-muted">
+          Snittet gjør kampanjer av ulik lengde sammenlignbare. Tallene gjelder
+          hele bedriften.
+        </p>
+      </div>
+
+      <ul className="space-y-2">
+        {medData.map((p) => {
+          const t = totaler[p.id];
+          const snitt = etasjerPerDeltakerPerDag(
+            t.floors,
+            t.participants,
+            p.startsAt,
+            p.endsAt,
+          );
+          return (
+            <li
+              key={p.id}
+              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                p.id === valgtId
+                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/40"
+                  : "border-line bg-surface"
+              }`}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{p.name}</p>
+                <p className="text-xs text-muted">
+                  {formatAntall(t.floors)} etasjer ·{" "}
+                  {formatAntall(t.participants)}{" "}
+                  {plural(t.participants, "deltaker", "deltakere")}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-lg font-semibold tabular-nums">
+                  {snitt === null ? "–" : formatSnitt(snitt)}
+                </p>
+                <p className="text-xs text-muted">per dag</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

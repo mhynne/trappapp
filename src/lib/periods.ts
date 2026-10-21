@@ -160,3 +160,119 @@ export async function getLeaderboard(
 
 // Formattering ligger i @/lib/format slik at klientkomponenter kan bruke den
 // uten å dra med seg databasetilkoblingen.
+
+/* ------------------------------------------------------------- totaler */
+
+export type PeriodTotals = {
+  floorsUp: number;
+  floorsDown: number;
+  /** Opp og ned lagt sammen. Det er dette «antall trapper» betyr her. */
+  floors: number;
+  participants: number;
+  trips: number;
+};
+
+const TOMME_TOTALER: PeriodTotals = {
+  floorsUp: 0,
+  floorsDown: 0,
+  floors: 0,
+  participants: 0,
+  trips: 0,
+};
+
+/**
+ * Etasjer, ikke poeng. Poengreglene settes per periode og kan endres, og
+ * dagstaket lagrer turer over grensen med null poeng selv om de ble gått –
+ * så poengsummen kan verken sammenlignes mellom kampanjer eller brukes som
+ * mål på aktivitet. Etasjer er upåvirket av begge deler.
+ */
+const loadPeriodTotals = unstable_cache(
+  async (periodId: number, locationId: number | null): Promise<PeriodTotals> => {
+    const rows = await db.execute<{
+      floors_up: string;
+      floors_down: string;
+      participants: string;
+      trips: string;
+    }>(sql`
+      select
+        coalesce(sum(t.floors_up), 0)        as floors_up,
+        coalesce(sum(t.floors_down), 0)      as floors_down,
+        count(distinct t.participant_id)     as participants,
+        count(*)                             as trips
+      from trips t
+      join participants p on p.id = t.participant_id
+      where t.period_id = ${periodId}
+        and t.deleted_at is null
+        and p.is_banned = false
+        ${locationId === null ? sql`` : sql`and t.location_id = ${locationId}`}
+    `);
+
+    const row = rows[0];
+    if (!row) return TOMME_TOTALER;
+
+    const floorsUp = Number(row.floors_up);
+    const floorsDown = Number(row.floors_down);
+    return {
+      floorsUp,
+      floorsDown,
+      floors: floorsUp + floorsDown,
+      participants: Number(row.participants),
+      trips: Number(row.trips),
+    };
+  },
+  ["periode-totaler"],
+  { revalidate: 60 },
+);
+
+export async function getPeriodTotals(
+  periodId: number,
+  locationId: number | null = null,
+): Promise<PeriodTotals> {
+  return loadPeriodTotals(periodId, locationId);
+}
+
+/** Totaler for alle perioder i én spørring, til sammenligning over tid. */
+const loadTotalsByPeriod = unstable_cache(
+  async (): Promise<Record<number, PeriodTotals>> => {
+    const rows = await db.execute<{
+      period_id: number;
+      floors_up: string;
+      floors_down: string;
+      participants: string;
+      trips: string;
+    }>(sql`
+      select
+        t.period_id,
+        coalesce(sum(t.floors_up), 0)    as floors_up,
+        coalesce(sum(t.floors_down), 0)  as floors_down,
+        count(distinct t.participant_id) as participants,
+        count(*)                         as trips
+      from trips t
+      join participants p on p.id = t.participant_id
+      where t.deleted_at is null
+        and p.is_banned = false
+        and t.period_id is not null
+      group by t.period_id
+    `);
+
+    const ut: Record<number, PeriodTotals> = {};
+    for (const row of rows) {
+      const floorsUp = Number(row.floors_up);
+      const floorsDown = Number(row.floors_down);
+      ut[row.period_id] = {
+        floorsUp,
+        floorsDown,
+        floors: floorsUp + floorsDown,
+        participants: Number(row.participants),
+        trips: Number(row.trips),
+      };
+    }
+    return ut;
+  },
+  ["totaler-per-periode"],
+  { revalidate: 60 },
+);
+
+export async function getTotalsByPeriod(): Promise<Record<number, PeriodTotals>> {
+  return loadTotalsByPeriod();
+}
