@@ -189,6 +189,8 @@ export default async function PostersPage({
           <p className="poster-foot">
             Jobbadresse eller privat e-post – du velger selv
           </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hdir-logo.png" alt="Helsedirektoratet" className="poster-logo" />
         </section>
 
         {posters.map(({ floor, url, svg, locationName }) => (
@@ -207,6 +209,8 @@ export default async function PostersPage({
             />
             <p className="poster-url">{url}</p>
             <p className="poster-foot">TrappApp · hver etasje gir poeng</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/hdir-logo.png" alt="Helsedirektoratet" className="poster-logo" />
           </section>
         ))}
       </div>
@@ -281,6 +285,13 @@ const PRINT_CSS = `
   color: #047857;
   font-weight: 600;
   margin: auto 0 0;
+}
+
+/* Logoen nederst, med luft rundt slik merkevarereglene krever. */
+.poster-logo {
+  width: 62mm;
+  height: auto;
+  margin: 10mm 0 0;
 }
 
 @media print {
