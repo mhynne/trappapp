@@ -29,7 +29,7 @@ export type RegisterSuccess = {
   pointsEarned: number;
   capped: boolean;
   flagged: boolean;
-  periodName: string | null;
+  periodName: string;
   totalPoints: number;
   rank: number | null;
   participantCount: number;
@@ -42,7 +42,8 @@ export type RegisterFailureCode =
   | "unknown_from_floor"
   | "same_floor"
   | "cooldown"
-  | "too_fast";
+  | "too_fast"
+  | "no_period";
 
 export type RegisterFailure = {
   ok: false;
@@ -266,24 +267,29 @@ export async function registerTrip(params: {
 
   const period: ActivityPeriod | null = await getActivePeriod();
 
+  // Uten kampanje gir turen null poeng. Å lagre den likevel er bare egnet til
+  // å forvirre – da er det ærligere å si at kampanjen er over.
+  if (!period) {
+    return {
+      ok: false,
+      code: "no_period",
+      message: "Ingen kampanje pågår akkurat nå, så turen kan ikke registreres.",
+    };
+  }
+
   const floorsUp = Math.max(0, toFloor - fromFloor);
   const floorsDown = Math.max(0, fromFloor - toFloor);
 
-  let pointsEarned = 0;
-  let capped = false;
-
-  if (period) {
-    const rules = rulesFor(period);
-    const rawPoints = floorsUp * rules.pointsUp + floorsDown * rules.pointsDown;
-    const alreadyToday = await pointsToday(participant.id);
-    const remaining = Math.max(0, rules.dailyPointsCap - alreadyToday);
-    pointsEarned = Math.min(rawPoints, remaining);
-    capped = pointsEarned < rawPoints;
-  }
+  const rules = rulesFor(period);
+  const rawPoints = floorsUp * rules.pointsUp + floorsDown * rules.pointsDown;
+  const alreadyToday = await pointsToday(participant.id);
+  const remaining = Math.max(0, rules.dailyPointsCap - alreadyToday);
+  const pointsEarned = Math.min(rawPoints, remaining);
+  const capped = pointsEarned < rawPoints;
 
   await db.insert(trips).values({
     participantId: participant.id,
-    periodId: period?.id ?? null,
+    periodId: period.id,
     scannedFloorId: scannedFloor.id,
     locationId: scannedFloor.locationId,
     fromFloor,
@@ -295,9 +301,7 @@ export async function registerTrip(params: {
     flagged,
   });
 
-  const standing = period
-    ? await getStanding(participant.id, period.id)
-    : { totalPoints: 0, rank: null, participantCount: 0 };
+  const standing = await getStanding(participant.id, period.id);
 
   return {
     ok: true,
@@ -306,7 +310,7 @@ export async function registerTrip(params: {
     pointsEarned,
     capped,
     flagged,
-    periodName: period?.name ?? null,
+    periodName: period.name,
     ...standing,
   };
 }

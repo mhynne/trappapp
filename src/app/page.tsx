@@ -5,16 +5,24 @@ import { LoginCard } from "@/components/LoginCard";
 import { StairsMark } from "@/components/StairsMark";
 import { daysLeft, formatDateRange, formatPoints } from "@/lib/format";
 import { getCurrentParticipant } from "@/lib/identity";
-import { getActivePeriodCached, rulesFor } from "@/lib/periods";
+import {
+  getActivePeriodCached,
+  getAllPeriodsCached,
+  rulesFor,
+} from "@/lib/periods";
 import { getStanding } from "@/lib/trips";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [participant, period] = await Promise.all([
+  const [participant, period, alle] = await Promise.all([
     getCurrentParticipant(),
     getActivePeriodCached(),
+    getAllPeriodsCached(),
   ]);
+
+  // Nyeste periode, brukt til å peke på resultatene når kampanjen er over.
+  const sist = alle[0] ?? null;
 
   const standing =
     participant && period ? await getStanding(participant.id, period.id) : null;
@@ -83,11 +91,34 @@ export default async function HomePage() {
           </section>
         ) : (
           <section className="rounded-2xl border border-line bg-surface p-6">
-            <h2 className="text-lg font-semibold">Ingen periode pågår</h2>
-            <p className="mt-1 text-sm text-muted">
-              Turene du registrerer blir lagret, men gir ikke poeng før en ny
-              konkurranseperiode starter.
-            </p>
+            <h2 className="text-lg font-semibold">
+              {sist ? "Kampanjen er over" : "Ingen kampanje pågår"}
+            </h2>
+            {sist ? (
+              <>
+                <p className="mt-1 text-sm text-muted">
+                  Turer kan ikke registreres før en ny kampanje starter.
+                </p>
+                <p className="mt-3 text-sm">
+                  <span className="font-medium">{sist.name}</span>
+                  <span className="text-muted">
+                    {" · "}
+                    {formatDateRange(sist.startsAt, sist.endsAt)}
+                  </span>
+                </p>
+                <Link
+                  href={`/resultater?periode=${sist.id}`}
+                  className="mt-5 block rounded-xl bg-brand-600 px-4 py-3 text-center font-semibold text-white"
+                >
+                  Se hvordan det gikk
+                </Link>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-muted">
+                Når en kampanje starter, kan du registrere trappeturer og samle
+                poeng.
+              </p>
+            )}
           </section>
         )}
 

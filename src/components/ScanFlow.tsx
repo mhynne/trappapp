@@ -26,6 +26,15 @@ export function ScanFlow(props: Props) {
   const [nickname, setNickname] = useState(props.nickname);
   const [result, setResult] = useState<RegisterSuccess | null>(null);
 
+  if (!props.hasActivePeriod) {
+    return (
+      <KampanjeOverStep
+        scannedFloor={props.scannedFloor}
+        locationName={props.locationName}
+      />
+    );
+  }
+
   if (!nickname) {
     return (
       <LoginStep
@@ -86,6 +95,38 @@ function LoginStep({
   );
 }
 
+/* ----------------------------------------------------------- kampanje over */
+
+function KampanjeOverStep({
+  scannedFloor,
+  locationName,
+}: {
+  scannedFloor: FloorOption;
+  locationName?: string | null;
+}) {
+  return (
+    <div className="space-y-6">
+      <Header
+        eyebrow="Kampanjen er over"
+        title="Ingen kampanje pågår"
+        subtitle={`Du står i ${scannedFloor.label}${locationName ? `, ${locationName}` : ""}. Turer kan ikke registreres før en ny kampanje starter.`}
+      />
+
+      <Link
+        href="/resultater"
+        className="block w-full rounded-2xl bg-brand-600 px-4 py-4 text-center text-lg font-semibold text-white"
+      >
+        Se hvordan det gikk
+      </Link>
+
+      <p className="text-sm text-muted">
+        Plakatene tas vanligvis ned mellom kampanjene. Står denne fortsatt oppe,
+        er det bare å la den henge – den virker igjen neste gang.
+      </p>
+    </div>
+  );
+}
+
 /* --------------------------------------------------------------- registrer */
 
 function RegisterStep({
@@ -93,7 +134,6 @@ function RegisterStep({
   scannedFloor,
   floors,
   suggestedFrom,
-  hasActivePeriod,
   onSuccess,
 }: Props & { onSuccess: (result: RegisterSuccess) => void }) {
   const options = floors.filter((f) => f.number !== scannedFloor.number);
@@ -128,13 +168,6 @@ function RegisterStep({
         title={scannedFloor.label}
         subtitle="Hvilken etasje gikk du fra?"
       />
-
-      {!hasActivePeriod && (
-        <p className="rounded-2xl bg-amber-100 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-          Ingen konkurranse pågår akkurat nå. Turen blir registrert, men gir ikke
-          poeng.
-        </p>
-      )}
 
       <div className="grid grid-cols-3 gap-2">
         {options.map((floor) => {
