@@ -28,6 +28,13 @@ const client =
     // kan gå parallelt, i stedet for å stå i kø bak hverandre og holde på
     // tilkoblingen lenger. Lokalt er en større pool nyttig ved omlasting.
     max: process.env.NODE_ENV === "production" ? 2 : 5,
+    // Uten disse kan en spørring som henger holde på tilkoblingen i opptil
+    // 300 sekunder – Vercels grense. Prøver noen da på nytt, legges en ny
+    // femminutters-tilkobling oppå, og en treg database blir fort en
+    // utilgjengelig database. Bedre å feile raskt og slippe tilkoblingen.
+    connect_timeout: 10,
+    idle_timeout: 20,
+    connection: { statement_timeout: 8000 },
   });
 
 if (process.env.NODE_ENV !== "production") {
