@@ -11,6 +11,26 @@ const MAX_ATTEMPTS = 5;
 /** Koder én adresse kan be om per time. */
 const MAX_PER_HOUR = 5;
 
+/**
+ * Tak på hvor mange koder appen sender til sammen per time.
+ *
+ * Grensen per adresse hindrer at én person blir plaget, men ikke at noen ber
+ * om koder til tusenvis av *ulike* adresser. Uten et samlet tak kan appen
+ * brukes til å sende e-post fra trappapp.no til hvem som helst – da brennes
+ * Resend-kvoten og domenet havner på svartelister, slik at de ansatte slutter
+ * å få kodene sine.
+ *
+ * Grensen er bevisst ikke satt per IP-adresse: på et kontornett deler alle
+ * ansatte som regel én utgående adresse, så en IP-grense ville stengt ute hele
+ * forsamlingen på et fellesmøte.
+ *
+ * Skal mange logge inn samtidig, hev den med MAX_LOGIN_CODES_PER_HOUR.
+ */
+function globaltTak(): number {
+  const satt = Number(process.env.MAX_LOGIN_CODES_PER_HOUR);
+  return Number.isFinite(satt) && satt > 0 ? satt : 500;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function normalizeEmail(raw: string): string {
@@ -89,6 +109,22 @@ export async function createLoginCode(email: string): Promise<CreateResult> {
     return {
       ok: false,
       message: "Du har bedt om for mange koder. Vent en time og prøv igjen.",
+    };
+  }
+
+  const totalt = await db
+    .select({ count: sql<string>`count(*)` })
+    .from(loginCodes)
+    .where(gt(loginCodes.createdAt, new Date(Date.now() - 60 * 60 * 1000)));
+
+  if (Number(totalt[0]?.count ?? 0) >= globaltTak()) {
+    console.warn(
+      `[TrappApp] Globalt tak for innloggingskoder nådd (${globaltTak()}/time).`,
+    );
+    return {
+      ok: false,
+      message:
+        "Det sendes uvanlig mange koder akkurat nå. Prøv igjen om en liten stund.",
     };
   }
 

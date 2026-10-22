@@ -6,6 +6,13 @@ import { SUPPORT_MESSAGE_MAX } from "@/lib/format";
 
 /** Meldinger fra samme avsender per time. */
 const MAX_PER_HOUR = 5;
+
+/**
+ * Tak på meldinger til sammen per time. Skjemaet er åpent uten innlogging, og
+ * anonyme meldinger uten adresse har ingen avsender å telle på – uten et
+ * samlet tak kan supportinnboksen oversvømmes.
+ */
+const MAX_TOTALT_PER_TIME = 30;
 /** Hvor lenge rapportene beholdes. Står også i personvernerklæringen. */
 const RETENTION_DAYS = 90;
 
@@ -72,6 +79,20 @@ export async function createReport(input: ReportInput): Promise<ReportResult> {
     return {
       ok: false,
       message: "Du har sendt flere meldinger nå nettopp. Vent litt og prøv igjen.",
+    };
+  }
+
+  const siste = await db
+    .select({ count: sql<string>`count(*)` })
+    .from(supportReports)
+    .where(gt(supportReports.createdAt, new Date(Date.now() - 60 * 60 * 1000)));
+
+  if (Number(siste[0]?.count ?? 0) >= MAX_TOTALT_PER_TIME) {
+    console.warn("[TrappApp] Globalt tak for supportmeldinger nådd.");
+    return {
+      ok: false,
+      message:
+        "Vi mottar uvanlig mange meldinger akkurat nå. Prøv igjen om en liten stund.",
     };
   }
 
