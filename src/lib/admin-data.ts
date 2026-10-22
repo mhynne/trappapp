@@ -46,8 +46,12 @@ export async function getTripsForModeration(
       ff.label as from_label, tf.label as to_label
     from trips t
     join participants p on p.id = t.participant_id
-    left join floors ff on ff.number = t.from_floor
-    left join floors tf on tf.number = t.to_floor
+    -- Etasjenummer er unikt per lokasjon, ikke globalt. Uten location_id i
+    -- koblingen treffer hver etasje én rad per bygg, og turen dupliseres.
+    left join floors ff
+      on ff.number = t.from_floor and ff.location_id = t.location_id
+    left join floors tf
+      on tf.number = t.to_floor and tf.location_id = t.location_id
     ${onlyFlagged ? sql`where t.flagged = true` : sql``}
     order by t.created_at desc
     limit ${limit}
