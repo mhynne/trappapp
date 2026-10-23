@@ -17,8 +17,9 @@ import {
   participants,
   trips,
 } from "@/lib/db/schema";
-import { validateNickname } from "@/lib/identity";
+import { DELTAKER_TAG, validateNickname } from "@/lib/identity";
 import {
+  BYGG_TAG,
   locationNameIsTaken,
   validateLocationName,
 } from "@/lib/locations";
@@ -42,6 +43,10 @@ function refreshAdmin() {
   // De offentlige sidene leser perioden fra cache. Uten dette ville en endring
   // her tatt opptil et minutt før den ble synlig for de ansatte.
   revalidateTag(PERIODS_TAG);
+  // Etasjer, bygg og deltakere leses nå fra cache på de offentlige sidene.
+  // Uten dette ville en endring her tatt opptil fem minutter å slå gjennom.
+  revalidateTag(BYGG_TAG);
+  revalidateTag(DELTAKER_TAG);
 }
 
 /* ------------------------------------------------------------- innlogging */

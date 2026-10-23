@@ -23,11 +23,11 @@ export const metadata: Metadata = {
 
 /**
  * Uten denne står en forespørsel i kø mot en treg database til Vercels
- * maksgrense på 300 sekunder, og siden ser ut til å henge. Tjue sekunder er
+ * maksgrense på 300 sekunder, og siden ser ut til å henge. Tretti sekunder er
  * rikelig – normale forespørsler bruker under to – og gjør at brukeren får
  * en feil å prøve på nytt fra i stedet for en fane som spinner.
  */
-export const maxDuration = 20;
+export const maxDuration = 30;
 
 export const viewport: Viewport = {
   themeColor: "#059669",

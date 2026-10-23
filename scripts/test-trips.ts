@@ -6,11 +6,11 @@ import { eq } from "drizzle-orm";
 
 import { db, sqlClient } from "../src/lib/db";
 import { participants } from "../src/lib/db/schema";
-import { getActiveLocations } from "../src/lib/locations";
+
 import { getActivePeriod, rulesFor } from "../src/lib/periods";
 import {
-  getActiveFloors,
-  getFloorByToken,
+  fetchActiveFloors,
+  fetchFloorByToken,
   registerTrip,
   suggestFromFloor,
 } from "../src/lib/trips";
@@ -43,10 +43,13 @@ async function ageTrips(participantId: string, seconds: number) {
 }
 
 async function main() {
-  const [location] = await getActiveLocations();
+  // Hentes direkte: de mellomlagrede variantene virker bare inne i Next.js.
+  const [location] = await sqlClient<{ id: number }[]>`
+    select id from locations where is_active order by id limit 1
+  `;
   if (!location) throw new Error("Ingen lokasjon. Kjør npm run db:seed.");
 
-  const floors = await getActiveFloors(location.id);
+  const floors = await fetchActiveFloors(location.id);
   const period = await getActivePeriod();
 
   if (!period) throw new Error("Ingen aktiv periode. Kjør npm run db:seed.");
@@ -56,7 +59,7 @@ async function main() {
   const floorAt = async (level: number) => {
     const floor = floors.find((f) => f.number === level);
     if (!floor) throw new Error(`Fant ingen etasje på nivå ${level}`);
-    const resolved = await getFloorByToken(floor.qrToken);
+    const resolved = await fetchFloorByToken(floor.qrToken);
     if (!resolved) throw new Error(`Fant ingen etasje for token ${floor.qrToken}`);
     return resolved;
   };

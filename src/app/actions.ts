@@ -26,7 +26,7 @@ import {
   setSession,
 } from "@/lib/session";
 import { appVersion, createReport } from "@/lib/support";
-import { getFloorByToken, registerTrip, type RegisterResult } from "@/lib/trips";
+import { fetchFloorByToken, registerTrip, type RegisterResult } from "@/lib/trips";
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -155,7 +155,7 @@ export async function registerTripAction(
     };
   }
 
-  const scannedFloor = await getFloorByToken(qrToken);
+  const scannedFloor = await fetchFloorByToken(qrToken);
   if (!scannedFloor) {
     return { ok: false, code: "unknown_floor", message: "Ukjent QR-kode." };
   }

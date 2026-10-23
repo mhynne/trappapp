@@ -1,4 +1,5 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
 import {
@@ -9,6 +10,7 @@ import {
   type Participant,
   type Trip,
 } from "@/lib/db/schema";
+import { BYGG_TAG } from "@/lib/locations";
 import { getActivePeriod, rulesFor } from "@/lib/periods";
 
 /**
@@ -161,8 +163,17 @@ export function suggestFromFloor(
   ).number;
 }
 
-/** Aktive etasjer i ett bygg. Etasjer fra andre bygg hører ikke hjemme her. */
-export async function getActiveFloors(locationId: number): Promise<Floor[]> {
+/** unstable_cache lagrer som JSON, så Date-felt kommer tilbake som tekst. */
+function reviveFloor(row: Floor): Floor {
+  return { ...row, createdAt: new Date(row.createdAt) };
+}
+
+/**
+ * Ferskt oppslag, uten mellomlagring. Brukes av registreringen, som validerer
+ * startetasjen og bør se en etasje som nettopp ble slått av. Samme skille som
+ * for perioder: lesestier tåler cache, skrivestier gjør det ikke.
+ */
+export async function fetchActiveFloors(locationId: number): Promise<Floor[]> {
   return db
     .select()
     .from(floors)
@@ -170,13 +181,54 @@ export async function getActiveFloors(locationId: number): Promise<Floor[]> {
     .orderBy(desc(floors.number));
 }
 
-export async function getFloorByToken(qrToken: string): Promise<Floor | null> {
+const loadActiveFloors = unstable_cache(
+  async (locationId: number): Promise<Floor[]> =>
+    db
+      .select()
+      .from(floors)
+      .where(and(eq(floors.isActive, true), eq(floors.locationId, locationId)))
+      .orderBy(desc(floors.number)),
+  ["aktive-etasjer"],
+  { revalidate: 300, tags: [BYGG_TAG] },
+);
+
+/**
+ * Aktive etasjer i ett bygg. Etasjer fra andre bygg hører ikke hjemme her.
+ *
+ * Mellomlagres fordi etasjer ikke endrer seg under en kampanje, mens dette
+ * slås opp ved hver eneste skanning. Admin tømmer cachen ved endring.
+ */
+export async function getActiveFloors(locationId: number): Promise<Floor[]> {
+  return (await loadActiveFloors(locationId)).map(reviveFloor);
+}
+
+/** Ferskt oppslag, til registreringen og til skript utenfor Next.js. */
+export async function fetchFloorByToken(qrToken: string): Promise<Floor | null> {
   const rows = await db
     .select()
     .from(floors)
     .where(eq(floors.qrToken, qrToken))
     .limit(1);
   return rows[0] ?? null;
+}
+
+const loadFloorByToken = unstable_cache(
+  async (qrToken: string): Promise<Floor | null> => {
+    const rows = await db
+      .select()
+      .from(floors)
+      .where(eq(floors.qrToken, qrToken))
+      .limit(1);
+    return rows[0] ?? null;
+  },
+  ["etasje-fra-token"],
+  { revalidate: 300, tags: [BYGG_TAG] },
+);
+
+/** Tokenet på en plakat peker alltid på samme etasje, så dette er statisk. */
+export async function getFloorByToken(qrToken: string): Promise<Floor | null> {
+  const row = await loadFloorByToken(qrToken);
+  return row ? reviveFloor(row) : null;
 }
 
 function plural(n: number, one: string, many: string) {
@@ -222,7 +274,7 @@ export async function registerTrip(params: {
 
   // Startetasjen må ligge i samme bygg som den skannede plakaten. Uten dette
   // kunne man oppgi en etasje fra et annet bygg og få poeng for differansen.
-  const knownFloors = await getActiveFloors(scannedFloor.locationId);
+  const knownFloors = await fetchActiveFloors(scannedFloor.locationId);
   if (!knownFloors.some((f) => f.number === fromFloor)) {
     return {
       ok: false,
