@@ -8,7 +8,8 @@ export function ServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
 
     navigator.serviceWorker.register("/sw.js").catch(() => {
-      // Uten service worker mister vi bare offline-siden. Ikke verdt å plage brukeren.
+      // Service workeren rydder bare opp i gamle versjoner nå. Feiler
+      // registreringen, merker ingen det.
     });
   }, []);
 
